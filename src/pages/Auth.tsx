@@ -9,9 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 const Auth = () => {
-  const [searchParams] = useSearchParams();
-  const isSignUp = searchParams.get("mode") === "signup";
-  const [mode, setMode] = useState<"login" | "signup">(isSignUp ? "signup" : "login");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modeParam = searchParams.get("mode");
+  const [mode, setModeState] = useState<"login" | "signup">(
+    modeParam === "signup" ? "signup" : "login",
+  );
+  const setMode = (nextMode: "login" | "signup") => {
+    setModeState(nextMode);
+    setSearchParams(nextMode === "signup" ? { mode: "signup" } : {});
+  };
+
   const [authType, setAuthType] = useState<"user" | "admin">("user");
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -31,6 +38,15 @@ const Auth = () => {
       navigate("/chat");
     }
   }, [user, navigate]);
+
+  // Keep "mode" in sync with the URL query (?mode=signup)
+  useEffect(() => {
+    if (modeParam === "signup") {
+      setModeState("signup");
+    } else {
+      setModeState("login");
+    }
+  }, [modeParam]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +153,7 @@ const Auth = () => {
             <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-button">
               <Shield className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold gradient-text">R-Vault</span>
+            <span className="text-2xl font-bold gradient-text">SecureHub</span>
           </div>
         </div>
 
@@ -184,7 +200,7 @@ const Auth = () => {
                 ? "Sign in with your admin credentials"
                 : mode === "login" 
                   ? "Sign in to continue to your secure chats" 
-                  : "Join R-Vault and start chatting securely"}
+                  : "Join SecureHub and start chatting securely"}
             </p>
           </div>
 
@@ -283,7 +299,7 @@ const Auth = () => {
                         id="username"
                         name="username"
                         type="text"
-                        placeholder="username ra"
+                        placeholder="johndoe"
                         value={formData.username}
                         onChange={handleChange}
                         className="pl-10 bg-secondary border-border focus:border-primary"
@@ -302,7 +318,7 @@ const Auth = () => {
                         id="email"
                         name="email"
                         type="email"
-                        placeholder="email ra babu"
+                        placeholder="john@example.com"
                         value={formData.email}
                         onChange={handleChange}
                         className="pl-10 bg-secondary border-border focus:border-primary"
@@ -321,7 +337,7 @@ const Auth = () => {
                         id="password"
                         name="password"
                         type="password"
-                        placeholder="password pettava?"
+                        placeholder="••••••••"
                         value={formData.password}
                         onChange={handleChange}
                         className="pl-10 bg-secondary border-border focus:border-primary"
@@ -354,7 +370,7 @@ const Auth = () => {
                         id="email"
                         name="email"
                         type="email"
-                        placeholder="email gurtunda"
+                        placeholder="john@example.com"
                         value={formData.email}
                         onChange={handleChange}
                         className="pl-10 bg-secondary border-border focus:border-primary"
