@@ -19,7 +19,7 @@ interface ProfileEditorProps {
 }
 
 const ProfileEditor = ({ open, onOpenChange }: ProfileEditorProps) => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -128,8 +128,8 @@ const ProfileEditor = ({ open, onOpenChange }: ProfileEditorProps) => {
 
       onOpenChange(false);
       
-      // Refresh the page to update profile data everywhere
-      window.location.reload();
+      // Refresh profile data without page reload
+      await refreshProfile();
     } catch (error: any) {
       toast({
         title: "Failed to save",

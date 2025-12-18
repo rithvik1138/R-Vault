@@ -20,6 +20,7 @@ interface AuthContextType {
   verifyOtp: (phone: string, token: string, displayName?: string) => Promise<{ error: Error | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -154,6 +155,12 @@ const signUp = async (email: string, password: string, username?: string) => {
     setProfile(null);
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -165,7 +172,8 @@ const signUp = async (email: string, password: string, username?: string) => {
       signInWithPhone, 
       verifyOtp, 
       signInWithPassword, 
-      signOut 
+      signOut,
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>
