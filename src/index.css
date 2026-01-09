@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
@@ -63,6 +63,64 @@
     --sidebar-accent-foreground: 30 10% 90%;
     --sidebar-border: 220 15% 22%;
     --sidebar-ring: 24 95% 53%;
+  }
+
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 220 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 15%;
+
+    --primary: 24 95% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 94%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 16 85% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 94%;
+    --ring: 24 95% 50%;
+
+    /* Custom colors for light mode */
+    --orange-glow: 24 100% 50%;
+    --coral: 16 85% 55%;
+    --amber: 38 92% 50%;
+    --navy: 220 30% 96%;
+    --navy-light: 220 25% 92%;
+    --charcoal: 220 20% 95%;
+
+    /* Gradients for light mode */
+    --gradient-primary: linear-gradient(135deg, hsl(24 95% 50%) 0%, hsl(16 85% 55%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 15% 97%) 0%, hsl(220 15% 94%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 15% 97%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(24 95% 50% / 0.1) 0%, transparent 70%);
+
+    /* Shadows for light mode */
+    --shadow-glow: 0 0 60px hsl(24 95% 50% / 0.15);
+    --shadow-card: 0 8px 32px hsl(220 20% 80% / 0.3);
+    --shadow-button: 0 4px 20px hsl(24 95% 50% / 0.3);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 15%;
+    --sidebar-primary: 24 95% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 94%;
+    --sidebar-accent-foreground: 220 15% 25%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 24 95% 50%;
   }
 
   .dark {

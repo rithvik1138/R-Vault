@@ -13,18 +13,22 @@ import { useMessages } from "@/hooks/use-messages";
 import { useAdmin } from "@/hooks/use-admin";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useNotifications } from "@/hooks/use-notifications";
+import { usePrivacySettings } from "@/hooks/use-privacy-settings";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
 import MediaUpload from "@/components/MediaUpload";
 import TypingIndicator from "@/components/TypingIndicator";
-import ProfileEditor from "@/components/ProfileEditor";
+import SettingsDialog from "@/components/SettingsDialog";
+import CallModal from "@/components/CallModal";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showFriendsManager, setShowFriendsManager] = useState(false);
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [isVideoCall, setIsVideoCall] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isMobile = useIsMobile();
@@ -34,9 +38,10 @@ const Chat = () => {
   const { messages, sendMessage, sendMediaMessage, deleteMessage } = useMessages(selectedFriendId);
   const { isAdmin } = useAdmin();
   const { friendIsTyping, handleTyping, stopTyping } = useTypingIndicator(selectedFriendId);
+  const { settings: privacySettings } = usePrivacySettings();
   
   // Enable in-app notifications for messages from other conversations
-  useNotifications(selectedFriendId);
+  useNotifications(selectedFriendId, privacySettings.notificationsEnabled);
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
 
@@ -107,7 +112,7 @@ const Chat = () => {
               <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold gradient-text">R-Vault</span>
+              <span className="font-bold gradient-text">SecureHub</span>
             </Link>
             <div className="flex items-center gap-1">
               <Button 
@@ -129,7 +134,7 @@ const Chat = () => {
                 variant="ghost" 
                 size="icon" 
                 className="text-muted-foreground"
-                onClick={() => setShowProfileEditor(true)}
+                onClick={() => setShowSettings(true)}
               >
                 <Settings className="w-4 h-4" />
               </Button>
@@ -142,7 +147,7 @@ const Chat = () => {
           {/* User Profile */}
           <div 
             className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50 mb-4 cursor-pointer hover:bg-secondary/70 transition-colors"
-            onClick={() => setShowProfileEditor(true)}
+            onClick={() => setShowSettings(true)}
           >
             {profile?.avatar_url ? (
               <img 
@@ -277,10 +282,26 @@ const Chat = () => {
               </div>
               
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setIsVideoCall(false);
+                    setShowCallModal(true);
+                  }}
+                >
                   <Phone className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setIsVideoCall(true);
+                    setShowCallModal(true);
+                  }}
+                >
                   <VideoIcon className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
@@ -360,7 +381,7 @@ const Chat = () => {
               <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to R-Vault</h2>
+              <h2 className="text-xl font-semibold mb-2">Welcome to SecureHub</h2>
               <p className="text-muted-foreground mb-4">Select a friend to start chatting</p>
               {isAdmin && (
                 <p className="text-xs text-primary flex items-center justify-center gap-1 mb-4">
@@ -378,11 +399,23 @@ const Chat = () => {
           </div>
         )}
       </main>
-      {/* Profile Editor Dialog */}
-      <ProfileEditor 
-        open={showProfileEditor} 
-        onOpenChange={setShowProfileEditor} 
+      
+      {/* Settings Dialog */}
+      <SettingsDialog 
+        open={showSettings} 
+        onOpenChange={setShowSettings} 
       />
+
+      {/* Call Modal */}
+      {selectedFriend && (
+        <CallModal
+          open={showCallModal}
+          onOpenChange={setShowCallModal}
+          friendName={selectedFriend.display_name || selectedFriend.username || "Friend"}
+          friendAvatar={selectedFriend.avatar_url}
+          isVideoCall={isVideoCall}
+        />
+      )}
     </div>
   );
 };
