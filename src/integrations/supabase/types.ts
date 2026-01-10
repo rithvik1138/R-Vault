@@ -146,6 +146,93 @@ export type Database = {
         }
         Relationships: []
       }
+      calls: {
+        Row: {
+          id: string
+          caller_id: string
+          receiver_id: string
+          call_type: "audio" | "video"
+          status: "ringing" | "accepted" | "declined" | "ended" | "missed"
+          started_at: string | null
+          ended_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          caller_id: string
+          receiver_id: string
+          call_type: "audio" | "video"
+          status?: "ringing" | "accepted" | "declined" | "ended" | "missed"
+          started_at?: string | null
+          ended_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          caller_id?: string
+          receiver_id?: string
+          call_type?: "audio" | "video"
+          status?: "ringing" | "accepted" | "declined" | "ended" | "missed"
+          started_at?: string | null
+          ended_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      call_signals: {
+        Row: {
+          id: string
+          call_id: string
+          sender_id: string
+          signal_type: "offer" | "answer" | "ice-candidate"
+          signal_data: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          call_id: string
+          sender_id: string
+          signal_type: "offer" | "answer" | "ice-candidate"
+          signal_data: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          call_id?: string
+          sender_id?: string
+          signal_type?: "offer" | "answer" | "ice-candidate"
+          signal_data?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string | null
+          auth: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh?: string | null
+          auth?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string | null
+          auth?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

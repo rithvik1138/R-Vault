@@ -14,12 +14,15 @@ import { useAdmin } from "@/hooks/use-admin";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePrivacySettings } from "@/hooks/use-privacy-settings";
+import { useWebRTCCall } from "@/hooks/use-webrtc-call";
+import { useIncomingCalls } from "@/hooks/use-incoming-calls";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
 import MediaUpload from "@/components/MediaUpload";
 import TypingIndicator from "@/components/TypingIndicator";
 import SettingsDialog from "@/components/SettingsDialog";
-import CallModal from "@/components/CallModal";
+import ActiveCallModal from "@/components/ActiveCallModal";
+import IncomingCallModal from "@/components/IncomingCallModal";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -40,6 +43,10 @@ const Chat = () => {
   const { friendIsTyping, handleTyping, stopTyping } = useTypingIndicator(selectedFriendId);
   const { settings: privacySettings } = usePrivacySettings();
   
+  // WebRTC call hooks
+  const webrtcCall = useWebRTCCall();
+  const { incomingCall, clearIncomingCall } = useIncomingCalls();
+  
   // Enable in-app notifications for messages from other conversations
   useNotifications(selectedFriendId, privacySettings.notificationsEnabled);
 
@@ -56,6 +63,13 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Open call modal when call is active
+  useEffect(() => {
+    if (webrtcCall.callState !== "idle" && webrtcCall.callState !== "ended") {
+      setShowCallModal(true);
+    }
+  }, [webrtcCall.callState]);
 
   const handleSendMessage = async () => {
     if (message.trim()) {
@@ -75,6 +89,28 @@ const Chat = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleStartCall = (video: boolean) => {
+    if (selectedFriendId) {
+      setIsVideoCall(video);
+      webrtcCall.startCall(selectedFriendId, video);
+    }
+  };
+
+  const handleAnswerCall = () => {
+    if (incomingCall) {
+      setIsVideoCall(incomingCall.call.call_type === "video");
+      webrtcCall.answerCall(incomingCall.call);
+      clearIncomingCall();
+    }
+  };
+
+  const handleDeclineCall = () => {
+    if (incomingCall) {
+      webrtcCall.declineCall(incomingCall.call.id);
+      clearIncomingCall();
+    }
   };
 
   const getInitials = (name: string | null) => {
@@ -286,10 +322,7 @@ const Chat = () => {
                   variant="ghost" 
                   size="icon" 
                   className="text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setIsVideoCall(false);
-                    setShowCallModal(true);
-                  }}
+                  onClick={() => handleStartCall(false)}
                 >
                   <Phone className="w-4 h-4" />
                 </Button>
@@ -297,10 +330,7 @@ const Chat = () => {
                   variant="ghost" 
                   size="icon" 
                   className="text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setIsVideoCall(true);
-                    setShowCallModal(true);
-                  }}
+                  onClick={() => handleStartCall(true)}
                 >
                   <VideoIcon className="w-4 h-4" />
                 </Button>
@@ -406,16 +436,33 @@ const Chat = () => {
         onOpenChange={setShowSettings} 
       />
 
-      {/* Call Modal */}
-      {selectedFriend && (
-        <CallModal
-          open={showCallModal}
-          onOpenChange={setShowCallModal}
-          friendName={selectedFriend.display_name || selectedFriend.username || "Friend"}
-          friendAvatar={selectedFriend.avatar_url}
-          isVideoCall={isVideoCall}
-        />
-      )}
+      {/* Active Call Modal */}
+      <ActiveCallModal
+        open={showCallModal && webrtcCall.callState !== "idle"}
+        onClose={() => {
+          setShowCallModal(false);
+          webrtcCall.cleanup();
+        }}
+        callState={webrtcCall.callState}
+        isVideoCall={isVideoCall}
+        friendName={selectedFriend?.display_name || selectedFriend?.username || "Friend"}
+        friendAvatar={selectedFriend?.avatar_url}
+        localStream={webrtcCall.localStream}
+        remoteStream={webrtcCall.remoteStream}
+        isMuted={webrtcCall.isMuted}
+        isVideoEnabled={webrtcCall.isVideoEnabled}
+        callDuration={webrtcCall.callDuration}
+        onEndCall={webrtcCall.endCall}
+        onToggleMute={webrtcCall.toggleMute}
+        onToggleVideo={webrtcCall.toggleVideo}
+      />
+
+      {/* Incoming Call Modal */}
+      <IncomingCallModal
+        incomingCall={incomingCall}
+        onAnswer={handleAnswerCall}
+        onDecline={handleDeclineCall}
+      />
     </div>
   );
 };
