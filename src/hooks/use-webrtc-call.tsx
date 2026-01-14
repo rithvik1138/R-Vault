@@ -130,8 +130,8 @@ export const useWebRTCCall = () => {
         await supabase.from("call_signals").insert({
           call_id: callId,
           sender_id: user.id,
-          signal_type: "ice-candidate",
-          signal_data: event.candidate.toJSON() as unknown as Json,
+          signal_type: "ice-candidate" as const,
+          signal_data: event.candidate.toJSON() as Json,
         });
       }
     };
@@ -269,7 +269,7 @@ export const useWebRTCCall = () => {
       await supabase.from("call_signals").insert({
         call_id: call.id,
         sender_id: user.id,
-        signal_type: "offer",
+        signal_type: "offer" as const,
         signal_data: offer as unknown as Json,
       });
 
@@ -366,7 +366,7 @@ export const useWebRTCCall = () => {
         await supabase.from("call_signals").insert({
           call_id: call.id,
           sender_id: user.id,
-          signal_type: "answer",
+          signal_type: "answer" as const,
           signal_data: answer as unknown as Json,
         });
       }

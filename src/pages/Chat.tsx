@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Shield, Send, Search, Settings, LogOut, MoreVertical, 
-  Phone, VideoIcon, Smile, ChevronLeft, Users, ShieldCheck
+  Phone, VideoIcon, ChevronLeft, Users, ShieldCheck
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,6 +16,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { usePrivacySettings } from "@/hooks/use-privacy-settings";
 import { useWebRTCCall } from "@/hooks/use-webrtc-call";
 import { useIncomingCalls } from "@/hooks/use-incoming-calls";
+import { useOnlinePresence } from "@/hooks/use-online-presence";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
 import MediaUpload from "@/components/MediaUpload";
@@ -23,6 +24,8 @@ import TypingIndicator from "@/components/TypingIndicator";
 import SettingsDialog from "@/components/SettingsDialog";
 import ActiveCallModal from "@/components/ActiveCallModal";
 import IncomingCallModal from "@/components/IncomingCallModal";
+import EmojiPicker from "@/components/EmojiPicker";
+import OnlineIndicator from "@/components/OnlineIndicator";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -46,6 +49,10 @@ const Chat = () => {
   // WebRTC call hooks
   const webrtcCall = useWebRTCCall();
   const { incomingCall, clearIncomingCall } = useIncomingCalls();
+  
+  // Online presence - track which friends are online
+  const friendIds = useMemo(() => friends.map(f => f.id), [friends]);
+  const { isOnline } = useOnlinePresence(friendIds);
   
   // Enable in-app notifications for messages from other conversations
   useNotifications(selectedFriendId, privacySettings.notificationsEnabled);
@@ -269,6 +276,7 @@ const Chat = () => {
                           </span>
                         </div>
                       )}
+                      <OnlineIndicator isOnline={isOnline(friend.id)} size="md" />
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate">
@@ -298,22 +306,31 @@ const Chat = () => {
                     <ChevronLeft className="w-5 h-5" />
                   </Button>
                 )}
-                {selectedFriend.avatar_url ? (
-                  <img 
-                    src={selectedFriend.avatar_url} 
-                    alt={selectedFriend.display_name || selectedFriend.username || 'Friend'} 
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
-                    <span className="text-sm font-semibold text-primary-foreground">
-                      {getInitials(selectedFriend.display_name || selectedFriend.username)}
-                    </span>
-                  </div>
-                )}
+                <div className="relative">
+                  {selectedFriend.avatar_url ? (
+                    <img 
+                      src={selectedFriend.avatar_url} 
+                      alt={selectedFriend.display_name || selectedFriend.username || 'Friend'} 
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
+                      <span className="text-sm font-semibold text-primary-foreground">
+                        {getInitials(selectedFriend.display_name || selectedFriend.username)}
+                      </span>
+                    </div>
+                  )}
+                  <OnlineIndicator isOnline={isOnline(selectedFriend.id)} size="md" />
+                </div>
                 <div>
                   <p className="font-semibold">{selectedFriend.display_name || selectedFriend.username}</p>
-                  <p className="text-xs text-muted-foreground">@{selectedFriend.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isOnline(selectedFriend.id) ? (
+                      <span className="text-green-500">Online</span>
+                    ) : (
+                      `@${selectedFriend.username}`
+                    )}
+                  </p>
                 </div>
               </div>
               
@@ -389,9 +406,9 @@ const Chat = () => {
                       placeholder="Type a message..."
                       className="pr-10 bg-secondary border-border focus:border-primary"
                     />
-                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      <Smile className="w-4 h-4" />
-                    </Button>
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <EmojiPicker onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)} />
+                    </div>
                   </div>
                   <Button 
                     variant="hero" 
