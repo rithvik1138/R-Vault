@@ -17,6 +17,9 @@ import { usePrivacySettings } from "@/hooks/use-privacy-settings";
 import { useWebRTCCall } from "@/hooks/use-webrtc-call";
 import { useIncomingCalls } from "@/hooks/use-incoming-calls";
 import { useOnlinePresence } from "@/hooks/use-online-presence";
+import { useLastSeen } from "@/hooks/use-last-seen";
+import { useMessageReactions } from "@/hooks/use-message-reactions";
+import { useReadReceipts } from "@/hooks/use-read-receipts";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
 import MediaUpload from "@/components/MediaUpload";
@@ -53,6 +56,16 @@ const Chat = () => {
   // Online presence - track which friends are online
   const friendIds = useMemo(() => friends.map(f => f.id), [friends]);
   const { isOnline } = useOnlinePresence(friendIds);
+  
+  // Last seen tracking
+  const { formatLastSeen } = useLastSeen(friendIds);
+  
+  // Message reactions
+  const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
+  const { toggleReaction, getReactionsForMessage } = useMessageReactions(messageIds);
+  
+  // Read receipts
+  useReadReceipts(messages, selectedFriendId);
   
   // Enable in-app notifications for messages from other conversations
   useNotifications(selectedFriendId, privacySettings.notificationsEnabled);
@@ -328,7 +341,7 @@ const Chat = () => {
                     {isOnline(selectedFriend.id) ? (
                       <span className="text-green-500">Online</span>
                     ) : (
-                      `@${selectedFriend.username}`
+                      formatLastSeen(selectedFriend.id) || `@${selectedFriend.username}`
                     )}
                   </p>
                 </div>
@@ -373,7 +386,10 @@ const Chat = () => {
                     mediaType={msg.media_type}
                     isOwn={msg.sender_id === user?.id}
                     time={msg.created_at}
+                    readAt={msg.read_at}
+                    reactions={getReactionsForMessage(msg.id)}
                     onDelete={deleteMessage}
+                    onToggleReaction={toggleReaction}
                     canDelete={msg.sender_id === user?.id || isAdmin}
                   />
                 ))

@@ -72,6 +72,26 @@ export const useMessages = (friendId: string | null) => {
       .on(
         "postgres_changes",
         {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const updatedMessage = payload.new as Message;
+          // Update if it's part of this conversation
+          if (
+            (updatedMessage.sender_id === user.id && updatedMessage.receiver_id === friendId) ||
+            (updatedMessage.sender_id === friendId && updatedMessage.receiver_id === user.id)
+          ) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === updatedMessage.id ? updatedMessage : m))
+            );
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "DELETE",
           schema: "public",
           table: "messages",

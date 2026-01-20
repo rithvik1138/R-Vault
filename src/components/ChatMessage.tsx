@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Play } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import MessageReactions from "@/components/MessageReactions";
+import ReadReceipt from "@/components/ReadReceipt";
+
+interface ReactionGroup {
+  emoji: string;
+  count: number;
+  userReacted: boolean;
+}
 
 interface ChatMessageProps {
   id: string;
@@ -10,7 +18,10 @@ interface ChatMessageProps {
   mediaType: string | null;
   isOwn: boolean;
   time: string;
+  readAt: string | null;
+  reactions: ReactionGroup[];
   onDelete?: (id: string) => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
   canDelete?: boolean;
 }
 
@@ -21,7 +32,10 @@ const ChatMessage = ({
   mediaType,
   isOwn,
   time,
+  readAt,
+  reactions,
   onDelete,
+  onToggleReaction,
   canDelete = false,
 }: ChatMessageProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -98,14 +112,22 @@ const ChatMessage = ({
           
           {content && <p className="text-sm">{content}</p>}
           
-          <p
-            className={`text-xs mt-1 ${
-              isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+          <div
+            className={`flex items-center gap-1 text-xs mt-1 ${
+              isOwn ? "text-primary-foreground/70 justify-end" : "text-muted-foreground"
             }`}
           >
-            {formatTime(time)}
-          </p>
+            <span>{formatTime(time)}</span>
+            <ReadReceipt isRead={readAt !== null} isOwn={isOwn} />
+          </div>
         </div>
+
+        {/* Reactions */}
+        <MessageReactions
+          reactions={reactions}
+          onToggleReaction={(emoji) => onToggleReaction?.(id, emoji)}
+          isOwn={isOwn}
+        />
       </div>
     </div>
   );
