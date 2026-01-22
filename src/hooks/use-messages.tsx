@@ -12,6 +12,7 @@ interface Message {
   media_type: string | null;
   created_at: string;
   read_at: string | null;
+  reply_to_id?: string | null;
 }
 
 export const useMessages = (friendId: string | null) => {
@@ -108,14 +109,20 @@ export const useMessages = (friendId: string | null) => {
     };
   }, [user, friendId, fetchMessages]);
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, replyToId?: string | null) => {
     if (!user || !friendId || !content.trim()) return;
 
-    const { error } = await supabase.from("messages").insert({
+    const insertData: Record<string, unknown> = {
       sender_id: user.id,
       receiver_id: friendId,
       content: content.trim(),
-    });
+    };
+
+    if (replyToId) {
+      insertData.reply_to_id = replyToId;
+    }
+
+    const { error } = await supabase.from("messages").insert(insertData as never);
 
     if (error) {
       toast({

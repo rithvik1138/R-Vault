@@ -20,6 +20,7 @@ import { useOnlinePresence } from "@/hooks/use-online-presence";
 import { useLastSeen } from "@/hooks/use-last-seen";
 import { useMessageReactions } from "@/hooks/use-message-reactions";
 import { useReadReceipts } from "@/hooks/use-read-receipts";
+import { useUnreadCount } from "@/hooks/use-unread-count";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
 import MediaUpload from "@/components/MediaUpload";
@@ -29,6 +30,7 @@ import ActiveCallModal from "@/components/ActiveCallModal";
 import IncomingCallModal from "@/components/IncomingCallModal";
 import EmojiPicker from "@/components/EmojiPicker";
 import OnlineIndicator from "@/components/OnlineIndicator";
+import ReplyPreview from "@/components/ReplyPreview";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -38,6 +40,11 @@ const Chat = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(false);
+  const [replyTo, setReplyTo] = useState<{
+    id: string;
+    content: string | null;
+    senderName: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isMobile = useIsMobile();
@@ -67,6 +74,9 @@ const Chat = () => {
   // Read receipts
   useReadReceipts(messages, selectedFriendId);
   
+  // Unread count for browser title
+  useUnreadCount();
+
   // Enable in-app notifications for messages from other conversations
   useNotifications(selectedFriendId, privacySettings.notificationsEnabled);
 
@@ -94,9 +104,31 @@ const Chat = () => {
   const handleSendMessage = async () => {
     if (message.trim()) {
       stopTyping();
-      await sendMessage(message);
+      await sendMessage(message, replyTo?.id);
       setMessage("");
+      setReplyTo(null);
     }
+  };
+
+  const handleReply = (messageId: string, content: string | null, senderName: string) => {
+    // Update sender name to actual friend name if not own message
+    const actualSenderName = senderName === "Friend" 
+      ? (selectedFriend?.display_name || selectedFriend?.username || "Friend")
+      : senderName;
+    setReplyTo({ id: messageId, content, senderName: actualSenderName });
+  };
+
+  const getReplyToMessage = (replyToId: string | null) => {
+    if (!replyToId) return null;
+    const msg = messages.find(m => m.id === replyToId);
+    if (!msg) return null;
+    return {
+      id: msg.id,
+      content: msg.content,
+      senderName: msg.sender_id === user?.id 
+        ? "You" 
+        : (selectedFriend?.display_name || selectedFriend?.username || "Friend"),
+    };
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -388,8 +420,10 @@ const Chat = () => {
                     time={msg.created_at}
                     readAt={msg.read_at}
                     reactions={getReactionsForMessage(msg.id)}
+                    replyTo={getReplyToMessage(msg.reply_to_id)}
                     onDelete={deleteMessage}
                     onToggleReaction={toggleReaction}
+                    onReply={handleReply}
                     canDelete={msg.sender_id === user?.id || isAdmin}
                   />
                 ))
@@ -399,6 +433,14 @@ const Chat = () => {
               )}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Reply Preview */}
+            {replyTo && (
+              <ReplyPreview
+                replyToMessage={replyTo}
+                onCancelReply={() => setReplyTo(null)}
+              />
+            )}
 
             {/* Message Input */}
             <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">

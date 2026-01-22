@@ -43,19 +43,53 @@ export const useMessageReactions = (messageIds: string[]) => {
 
   useEffect(() => {
     fetchReactions();
+  }, [fetchReactions]);
 
-    // Subscribe to reaction changes
+  // Separate subscription effect to avoid refetching on every message change
+  useEffect(() => {
+    if (messageIds.length === 0) return;
+
+    // Subscribe to reaction changes with a unique channel name
+    const channelName = `message-reactions-${messageIds.slice(0, 5).join("-")}`;
     const channel = supabase
-      .channel("message-reactions")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "message_reactions",
         },
-        () => {
-          fetchReactions();
+        (payload) => {
+          const newReaction = payload.new as Reaction;
+          if (messageIds.includes(newReaction.message_id)) {
+            setReactions((prev) => {
+              const newMap = new Map(prev);
+              const existing = newMap.get(newReaction.message_id) || [];
+              newMap.set(newReaction.message_id, [...existing, newReaction]);
+              return newMap;
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          const deleted = payload.old as Reaction;
+          setReactions((prev) => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(deleted.message_id) || [];
+            newMap.set(
+              deleted.message_id,
+              existing.filter((r) => r.id !== deleted.id)
+            );
+            return newMap;
+          });
         }
       )
       .subscribe();
@@ -63,7 +97,7 @@ export const useMessageReactions = (messageIds: string[]) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchReactions]);
+  }, [messageIds.join(",")]);
 
   const addReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
@@ -72,7 +106,7 @@ export const useMessageReactions = (messageIds: string[]) => {
       message_id: messageId,
       user_id: user.id,
       emoji,
-    });
+    } as never);
 
     if (error && !error.message.includes("duplicate")) {
       console.error("Error adding reaction:", error);
