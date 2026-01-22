@@ -102,19 +102,67 @@ export const useMessageReactions = (messageIds: string[]) => {
   const addReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
 
-    const { error } = await supabase.from("message_reactions").insert({
+    // Optimistic update
+    const tempId = `temp-${Date.now()}`;
+    const optimisticReaction: Reaction = {
+      id: tempId,
       message_id: messageId,
       user_id: user.id,
       emoji,
-    } as never);
+      created_at: new Date().toISOString(),
+    };
+
+    setReactions((prev) => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(messageId) || [];
+      newMap.set(messageId, [...existing, optimisticReaction]);
+      return newMap;
+    });
+
+    const { data, error } = await supabase.from("message_reactions").insert({
+      message_id: messageId,
+      user_id: user.id,
+      emoji,
+    } as never).select().single();
 
     if (error && !error.message.includes("duplicate")) {
       console.error("Error adding reaction:", error);
+      // Rollback on error
+      setReactions((prev) => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(messageId) || [];
+        newMap.set(messageId, existing.filter(r => r.id !== tempId));
+        return newMap;
+      });
+    } else if (data) {
+      // Replace temp with real reaction
+      setReactions((prev) => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(messageId) || [];
+        newMap.set(messageId, existing.map(r => r.id === tempId ? (data as Reaction) : r));
+        return newMap;
+      });
     }
   };
 
   const removeReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
+
+    // Find the reaction to remove for optimistic update
+    const messageReactions = reactions.get(messageId) || [];
+    const reactionToRemove = messageReactions.find(
+      (r) => r.user_id === user.id && r.emoji === emoji
+    );
+
+    if (!reactionToRemove) return;
+
+    // Optimistic update
+    setReactions((prev) => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(messageId) || [];
+      newMap.set(messageId, existing.filter(r => r.id !== reactionToRemove.id));
+      return newMap;
+    });
 
     const { error } = await supabase
       .from("message_reactions")
@@ -125,6 +173,13 @@ export const useMessageReactions = (messageIds: string[]) => {
 
     if (error) {
       console.error("Error removing reaction:", error);
+      // Rollback on error
+      setReactions((prev) => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(messageId) || [];
+        newMap.set(messageId, [...existing, reactionToRemove]);
+        return newMap;
+      });
     }
   };
 

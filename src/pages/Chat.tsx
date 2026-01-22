@@ -31,6 +31,7 @@ import IncomingCallModal from "@/components/IncomingCallModal";
 import EmojiPicker from "@/components/EmojiPicker";
 import OnlineIndicator from "@/components/OnlineIndicator";
 import ReplyPreview from "@/components/ReplyPreview";
+import ForwardMessageModal from "@/components/ForwardMessageModal";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -45,13 +46,19 @@ const Chat = () => {
     content: string | null;
     senderName: string;
   } | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<{
+    id: string;
+    content: string | null;
+    mediaUrl: string | null;
+    mediaType: string | null;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
   const { friends } = useFriends();
-  const { messages, sendMessage, sendMediaMessage, deleteMessage } = useMessages(selectedFriendId);
+  const { messages, sendMessage, sendMediaMessage, deleteMessage, forwardMessage } = useMessages(selectedFriendId);
   const { isAdmin } = useAdmin();
   const { friendIsTyping, handleTyping, stopTyping } = useTypingIndicator(selectedFriendId);
   const { settings: privacySettings } = usePrivacySettings();
@@ -118,7 +125,27 @@ const Chat = () => {
     setReplyTo({ id: messageId, content, senderName: actualSenderName });
   };
 
-  const getReplyToMessage = (replyToId: string | null) => {
+  const handleForward = (
+    messageId: string,
+    content: string | null,
+    mediaUrl: string | null,
+    mediaType: string | null
+  ) => {
+    setForwardingMessage({ id: messageId, content, mediaUrl, mediaType });
+  };
+
+  const handleConfirmForward = async (targetFriendIds: string[]) => {
+    if (!forwardingMessage) return;
+    await forwardMessage(
+      forwardingMessage.content,
+      forwardingMessage.mediaUrl,
+      forwardingMessage.mediaType,
+      targetFriendIds
+    );
+    setForwardingMessage(null);
+  };
+
+  const getReplyToMessage = (replyToId: string | null | undefined) => {
     if (!replyToId) return null;
     const msg = messages.find(m => m.id === replyToId);
     if (!msg) return null;
@@ -424,6 +451,7 @@ const Chat = () => {
                     onDelete={deleteMessage}
                     onToggleReaction={toggleReaction}
                     onReply={handleReply}
+                    onForward={handleForward}
                     canDelete={msg.sender_id === user?.id || isAdmin}
                   />
                 ))
@@ -537,6 +565,18 @@ const Chat = () => {
         incomingCall={incomingCall}
         onAnswer={handleAnswerCall}
         onDecline={handleDeclineCall}
+      />
+
+      {/* Forward Message Modal */}
+      <ForwardMessageModal
+        isOpen={forwardingMessage !== null}
+        onClose={() => setForwardingMessage(null)}
+        friends={friends.filter((f) => f.id !== selectedFriendId)}
+        messageContent={forwardingMessage?.content || null}
+        messageMediaUrl={forwardingMessage?.mediaUrl || null}
+        messageMediaType={forwardingMessage?.mediaType || null}
+        onForward={handleConfirmForward}
+        isOnline={isOnline}
       />
     </div>
   );

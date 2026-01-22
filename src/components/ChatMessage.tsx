@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Reply } from "lucide-react";
+import { Trash2, Reply, Forward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MessageReactions from "@/components/MessageReactions";
 import ReadReceipt from "@/components/ReadReceipt";
@@ -30,6 +30,7 @@ interface ChatMessageProps {
   onDelete?: (id: string) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   onReply?: (messageId: string, content: string | null, senderName: string) => void;
+  onForward?: (id: string, content: string | null, mediaUrl: string | null, mediaType: string | null) => void;
   canDelete?: boolean;
 }
 
@@ -46,6 +47,7 @@ const ChatMessage = ({
   onDelete,
   onToggleReaction,
   onReply,
+  onForward,
   canDelete = false,
 }: ChatMessageProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -81,14 +83,24 @@ const ChatMessage = ({
     >
       <div className="relative max-w-[70%]">
         {showDelete && (
-          <div className={`absolute top-0 ${isOwn ? "-left-20" : "-right-20"} flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
+          <div className={`absolute top-0 ${isOwn ? "-left-28" : "-right-28"} flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
               onClick={() => onReply?.(id, content, isOwn ? "You" : "Friend")}
+              title="Reply"
             >
               <Reply className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+              onClick={() => onForward?.(id, content, mediaUrl, mediaType)}
+              title="Forward"
+            >
+              <Forward className="w-4 h-4" />
             </Button>
             {canDelete && (
               <Button
@@ -96,6 +108,7 @@ const ChatMessage = ({
                 size="icon"
                 className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => onDelete?.(id)}
+                title="Delete"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

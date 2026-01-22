@@ -207,6 +207,49 @@ export const useMessages = (friendId: string | null) => {
     return data?.signedUrl || null;
   };
 
+  const forwardMessage = async (
+    content: string | null,
+    mediaUrl: string | null,
+    mediaType: string | null,
+    targetFriendIds: string[]
+  ) => {
+    if (!user) return;
+
+    const promises = targetFriendIds.map(async (targetFriendId) => {
+      const insertData: Record<string, unknown> = {
+        sender_id: user.id,
+        receiver_id: targetFriendId,
+      };
+
+      if (content) {
+        insertData.content = content;
+      }
+
+      if (mediaUrl) {
+        insertData.media_url = mediaUrl;
+        insertData.media_type = mediaType;
+      }
+
+      return supabase.from("messages").insert(insertData as never);
+    });
+
+    const results = await Promise.all(promises);
+    const errors = results.filter((r) => r.error);
+
+    if (errors.length > 0) {
+      toast({
+        title: "Error",
+        description: `Failed to forward to ${errors.length} recipient(s)`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Message forwarded to ${targetFriendIds.length} friend(s)`,
+      });
+    }
+  };
+
   return {
     messages,
     loading,
@@ -214,6 +257,7 @@ export const useMessages = (friendId: string | null) => {
     sendMediaMessage,
     deleteMessage,
     getMediaUrl,
+    forwardMessage,
     refreshMessages: fetchMessages,
   };
 };
