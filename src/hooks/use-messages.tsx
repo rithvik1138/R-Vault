@@ -185,6 +185,24 @@ export const useMessages = (friendId: string | null) => {
     }
   };
 
+  const editMessage = async (messageId: string, newContent: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("messages")
+      .update({ content: newContent, edited_at: new Date().toISOString() })
+      .eq("id", messageId)
+      .eq("sender_id", user.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to edit message",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteMessage = async (messageId: string) => {
     const { error } = await supabase
       .from("messages")
@@ -255,6 +273,7 @@ export const useMessages = (friendId: string | null) => {
     loading,
     sendMessage,
     sendMediaMessage,
+    editMessage,
     deleteMessage,
     getMediaUrl,
     forwardMessage,

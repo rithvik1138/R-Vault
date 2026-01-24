@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Reply, Forward } from "lucide-react";
+import { Trash2, Reply, Forward, Edit2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import MessageReactions from "@/components/MessageReactions";
 import ReadReceipt from "@/components/ReadReceipt";
 
@@ -17,6 +18,8 @@ interface ReplyToMessage {
   senderName: string;
 }
 
+const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
 interface ChatMessageProps {
   id: string;
   content: string | null;
@@ -25,13 +28,16 @@ interface ChatMessageProps {
   isOwn: boolean;
   time: string;
   readAt: string | null;
+  editedAt?: string | null;
   reactions: ReactionGroup[];
   replyTo?: ReplyToMessage | null;
   onDelete?: (id: string) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   onReply?: (messageId: string, content: string | null, senderName: string) => void;
   onForward?: (id: string, content: string | null, mediaUrl: string | null, mediaType: string | null) => void;
+  onEdit?: (id: string, newContent: string) => void;
   canDelete?: boolean;
+  canEdit?: boolean;
 }
 
 const ChatMessage = ({
@@ -42,17 +48,23 @@ const ChatMessage = ({
   isOwn,
   time,
   readAt,
+  editedAt,
   reactions,
   replyTo,
   onDelete,
   onToggleReaction,
   onReply,
   onForward,
+  onEdit,
   canDelete = false,
+  canEdit = false,
 }: ChatMessageProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(content || "");
+  const [canStillEdit, setCanStillEdit] = useState(false);
 
   useEffect(() => {
     const loadMedia = async () => {
@@ -68,6 +80,26 @@ const ChatMessage = ({
     loadMedia();
   }, [mediaUrl]);
 
+  // Check if message is still within edit window
+  useEffect(() => {
+    if (!canEdit) {
+      setCanStillEdit(false);
+      return;
+    }
+
+    const checkEditWindow = () => {
+      const messageTime = new Date(time).getTime();
+      const now = Date.now();
+      const withinWindow = now - messageTime < EDIT_WINDOW_MS;
+      setCanStillEdit(withinWindow);
+    };
+
+    checkEditWindow();
+    const interval = setInterval(checkEditWindow, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [time, canEdit]);
+
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString([], {
       hour: "2-digit",
@@ -75,15 +107,27 @@ const ChatMessage = ({
     });
   };
 
+  const handleSaveEdit = () => {
+    if (editContent.trim() && editContent.trim() !== content) {
+      onEdit?.(id, editContent.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditContent(content || "");
+    setIsEditing(false);
+  };
+
   return (
     <div
       className={`flex ${isOwn ? "justify-end" : "justify-start"} group`}
-      onMouseEnter={() => setShowDelete(true)}
-      onMouseLeave={() => setShowDelete(false)}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
       <div className="relative max-w-[70%]">
-        {showDelete && (
-          <div className={`absolute top-0 ${isOwn ? "-left-28" : "-right-28"} flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
+        {showActions && !isEditing && (
+          <div className={`absolute top-0 ${isOwn ? "-left-32" : "-right-32"} flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
             <Button
               variant="ghost"
               size="icon"
@@ -102,6 +146,17 @@ const ChatMessage = ({
             >
               <Forward className="w-4 h-4" />
             </Button>
+            {canStillEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                onClick={() => setIsEditing(true)}
+                title="Edit"
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
@@ -157,7 +212,38 @@ const ChatMessage = ({
             </div>
           )}
           
-          {content && <p className="text-sm">{content}</p>}
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="text-sm bg-background/20 border-0 focus-visible:ring-0 text-inherit placeholder:text-inherit/50"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveEdit();
+                  if (e.key === "Escape") handleCancelEdit();
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleSaveEdit}
+              >
+                <Check className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleCancelEdit}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            content && <p className="text-sm">{content}</p>
+          )}
           
           <div
             className={`flex items-center gap-1 text-xs mt-1 ${
@@ -165,6 +251,7 @@ const ChatMessage = ({
             }`}
           >
             <span>{formatTime(time)}</span>
+            {editedAt && <span className="opacity-70">(edited)</span>}
             <ReadReceipt isRead={readAt !== null} isOwn={isOwn} />
           </div>
         </div>

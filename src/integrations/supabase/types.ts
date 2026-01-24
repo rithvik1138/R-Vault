@@ -152,6 +152,93 @@ export type Database = {
         }
         Relationships: []
       }
+      group_chats: {
+        Row: {
+          id: string
+          name: string
+          avatar_url: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          avatar_url?: string | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          avatar_url?: string | null
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string
+          role: string
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id: string
+          role: string
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string
+          role?: string
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      group_messages: {
+        Row: {
+          id: string
+          group_id: string
+          sender_id: string
+          content: string | null
+          media_url: string | null
+          media_type: string | null
+          reply_to_id: string | null
+          edited_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          sender_id: string
+          content?: string | null
+          media_url?: string | null
+          media_type?: string | null
+          reply_to_id?: string | null
+          edited_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          sender_id?: string
+          content?: string | null
+          media_url?: string | null
+          media_type?: string | null
+          reply_to_id?: string | null
+          edited_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -257,6 +344,33 @@ export type Database = {
           p256dh?: string | null
           auth?: string | null
           created_at?: string
+        }
+        Relationships: []
+      }
+      fcm_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          device_info: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token: string
+          device_info?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token?: string
+          device_info?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
