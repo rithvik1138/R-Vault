@@ -12,12 +12,12 @@ const DEFAULT_SETTINGS: PrivacySettings = {
 
 export const usePrivacySettings = () => {
   const [settings, setSettings] = useState<PrivacySettings>(() => {
-    const stored = localStorage.getItem("securehub-privacy");
+    const stored = localStorage.getItem("r-vault-privacy");
     return stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
   });
 
   useEffect(() => {
-    localStorage.setItem("securehub-privacy", JSON.stringify(settings));
+    localStorage.setItem("r-vault-privacy", JSON.stringify(settings));
   }, [settings]);
 
   const updateSetting = <K extends keyof PrivacySettings>(

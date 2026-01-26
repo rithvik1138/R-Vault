@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem("securehub-theme");
+    const stored = localStorage.getItem("r-vault-theme");
     return (stored as Theme) || "dark";
   });
 
@@ -20,7 +20,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
     root.classList.add(theme);
-    localStorage.setItem("securehub-theme", theme);
+    localStorage.setItem("r-vault-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

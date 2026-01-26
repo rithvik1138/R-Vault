@@ -153,7 +153,7 @@ const Auth = () => {
             <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-button">
               <Shield className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold gradient-text">SecureHub</span>
+            <span className="text-2xl font-bold gradient-text">R-Vault</span>
           </div>
         </div>
 
@@ -200,7 +200,7 @@ const Auth = () => {
                 ? "Sign in with your admin credentials"
                 : mode === "login" 
                   ? "Sign in to continue to your secure chats" 
-                  : "Join SecureHub and start chatting securely"}
+                  : "Join R-Vault and start chatting securely"}
             </p>
           </div>
 
@@ -217,7 +217,7 @@ const Auth = () => {
                     id="email"
                     name="email"
                     type="email"
-                    placeholder="admin@securehub.com"
+                    placeholder="admin@r-vault.com"
                     value={formData.email}
                     onChange={handleChange}
                     className="pl-10 bg-secondary border-border focus:border-primary"

@@ -227,7 +227,7 @@ const Chat = () => {
               <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold gradient-text">SecureHub</span>
+              <span className="font-bold gradient-text">R-Vault</span>
             </Link>
             <div className="flex items-center gap-1">
               <Button 
@@ -514,7 +514,7 @@ const Chat = () => {
               <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to SecureHub</h2>
+              <h2 className="text-xl font-semibold mb-2">Welcome to R-Vault</h2>
               <p className="text-muted-foreground mb-4">Select a friend to start chatting</p>
               {isAdmin && (
                 <p className="text-xs text-primary flex items-center justify-center gap-1 mb-4">

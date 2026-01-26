@@ -1,5 +1,5 @@
 // Service Worker for Push Notifications
-const CACHE_NAME = 'securehub-v1';
+const CACHE_NAME = 'r-vault-v1';
 
 // Install event
 self.addEventListener('install', (event) => {
@@ -18,7 +18,7 @@ self.addEventListener('push', (event) => {
   console.log('Push received:', event);
 
   let data = {
-    title: 'SecureHub',
+    title: 'R-Vault',
     body: 'You have a new notification',
     icon: '/favicon.png',
     badge: '/favicon.png',
