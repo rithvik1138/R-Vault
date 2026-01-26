@@ -24,20 +24,13 @@ const messaging = firebase.messaging();
 ========================================= */
 
 messaging.onBackgroundMessage((payload) => {
-  console.log("[SW] Background message:", payload);
+  const { title, body, url } = payload.data;
 
-  const title = payload.notification?.title || "R-Vault";
-  const options = {
-    body: payload.notification?.body || "New message",
+  self.registration.showNotification(title, {
+    body,
     icon: "/favicon.png",
-    badge: "/favicon.png",
-    data: {
-      url: payload.data?.url || "/chat",
-    },
-    vibrate: [200, 100, 200],
-  };
-
-  self.registration.showNotification(title, options);
+    data: { url },
+  });
 });
 
 /* =========================================
