@@ -24,13 +24,26 @@ const messaging = firebase.messaging();
 ========================================= */
 
 messaging.onBackgroundMessage((payload) => {
-  const { title, body, url } = payload.data;
+  console.log("[SW] Background message received:", payload);
+  
+  // Extract from data field (required for background notifications)
+  const { title, body, url } = payload.data || {};
+  
+  if (!title || !body) {
+    console.error("[SW] Missing title or body in payload.data");
+    return;
+  }
 
-  self.registration.showNotification(title, {
+  const notificationOptions = {
     body,
     icon: "/favicon.png",
-    data: { url },
-  });
+    badge: "/favicon.png",
+    data: { url: url || "/chat" },
+    tag: "r-vault-message",
+    requireInteraction: false,
+  };
+
+  self.registration.showNotification(title, notificationOptions);
 });
 
 /* =========================================

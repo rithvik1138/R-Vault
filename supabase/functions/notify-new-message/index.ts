@@ -111,12 +111,17 @@ serve(async (req) => {
         body: JSON.stringify({
           message: {
             token: t.token,
+            // Use data field for background notifications (when app is closed)
+            // Firebase will show notification from data field when app is in background
+            data: {
+              title: "New message",
+              body: content || "You have a new message",
+              url: "/chat",
+            },
+            // Also include notification for foreground handling (optional)
             notification: {
               title: "New message",
-              body: content,
-            },
-            data: {
-              url: "/chat",
+              body: content || "You have a new message",
             },
           },
         }),

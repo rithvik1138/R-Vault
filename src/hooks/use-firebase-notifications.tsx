@@ -73,20 +73,33 @@ export const useFirebaseNotifications = () => {
           ? initializeApp(FIREBASE_CONFIG)
           : getApps()[0];
 
-      // Register Firebase service worker first
+      // Register Firebase service worker first (REQUIRED for background notifications)
       if ("serviceWorker" in navigator) {
         try {
-          const registration = await navigator.serviceWorker.register(
-            "/firebase-messaging-sw.js",
-            { scope: "/" }
-          );
-          console.log("🔥 Firebase service worker registered:", registration);
+          // Check if already registered
+          let registration = await navigator.serviceWorker.getRegistration();
+          
+          // Check if it's our Firebase service worker
+          if (!registration || !registration.active?.scriptURL.includes("firebase-messaging-sw.js")) {
+            registration = await navigator.serviceWorker.register(
+              "/firebase-messaging-sw.js",
+              { scope: "/" }
+            );
+            console.log("🔥 Firebase service worker registered:", registration);
+          } else {
+            console.log("🔥 Firebase service worker already registered");
+          }
+          
           // Wait for service worker to be ready
           await navigator.serviceWorker.ready;
+          console.log("🔥 Service worker is ready");
         } catch (error) {
-          console.error("Failed to register Firebase service worker:", error);
+          console.error("❌ Failed to register Firebase service worker:", error);
           return false;
         }
+      } else {
+        console.error("❌ Service workers not supported");
+        return false;
       }
 
       const messaging = getMessaging(app);
