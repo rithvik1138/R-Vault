@@ -1,8 +1,9 @@
 /* ================================
-   Firebase Cloud Messaging Setup
+   Firebase Cloud Messaging SW
+   (FINAL – STABLE)
 ================================ */
 
-// Import Firebase (MUST be first)
+// Firebase compat SDKs (MUST be first)
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
 
@@ -15,21 +16,19 @@ firebase.initializeApp({
   appId: "1:485639092097:web:00347d69cea82e23491a80",
 });
 
-// Firebase messaging instance
 const messaging = firebase.messaging();
 
 /* ================================
-   Firebase Background Notifications
+   🔥 BACKGROUND FCM HANDLER
+   (THIS FIXES MESSAGE NOTIFICATIONS)
 ================================ */
 
 messaging.onBackgroundMessage((payload) => {
-  console.log("FCM background message:", payload);
+  console.log("[FCM] Background message:", payload);
 
-  const notification = payload.notification || {};
-
-  const title = notification.title || "R-Vault";
+  const title = payload.notification?.title || "R-Vault";
   const options = {
-    body: notification.body || "You have a new notification",
+    body: payload.notification?.body || "New message",
     icon: "/favicon.png",
     badge: "/favicon.png",
     data: payload.data || {},
@@ -40,116 +39,43 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 /* ================================
-   Generic Service Worker Logic
+   Service Worker Lifecycle
 ================================ */
 
-const CACHE_NAME = "r-vault-v1";
-
-// Install event
 self.addEventListener("install", (event) => {
-  console.log("Service Worker installing.");
   self.skipWaiting();
 });
 
-// Activate event
 self.addEventListener("activate", (event) => {
-  console.log("Service Worker activating.");
   event.waitUntil(self.clients.claim());
 });
 
 /* ================================
-   Push API (Non-Firebase Push)
-   (Kept for compatibility)
+   ❌ DO NOT handle `push` manually
+   Firebase already does this
 ================================ */
 
-self.addEventListener("push", (event) => {
-  console.log("Push received:", event);
-
-  let data = {
-    title: "R-Vault",
-    body: "You have a new notification",
-    icon: "/favicon.png",
-    badge: "/favicon.png",
-    tag: "default",
-  };
-
-  if (event.data) {
-    try {
-      data = { ...data, ...event.data.json() };
-    } catch {
-      data.body = event.data.text();
-    }
-  }
-
-  const options = {
-    body: data.body,
-    icon: data.icon,
-    badge: data.badge,
-    tag: data.tag,
-    requireInteraction: data.requireInteraction || false,
-    data: data.data || {},
-    actions: data.actions || [],
-    vibrate: [200, 100, 200],
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
+// ⛔ REMOVE your old `self.addEventListener("push", ...)`
 
 /* ================================
    Notification Click
 ================================ */
 
 self.addEventListener("notificationclick", (event) => {
-  console.log("Notification clicked:", event);
   event.notification.close();
 
   const urlToOpen = event.notification.data?.url || "/chat";
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsArr) => {
+      for (const client of clientsArr) {
+        if ("focus" in client) {
           client.focus();
-          if (event.notification.data?.url) {
-            client.navigate(urlToOpen);
-          }
+          client.navigate(urlToOpen);
           return;
         }
       }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
+      return clients.openWindow(urlToOpen);
     })
   );
-});
-
-/* ================================
-   Notification Close
-================================ */
-
-self.addEventListener("notificationclose", (event) => {
-  console.log("Notification closed:", event);
-});
-
-/* ================================
-   Background Sync (optional)
-================================ */
-
-self.addEventListener("sync", (event) => {
-  console.log("Background sync:", event.tag);
-});
-
-/* ================================
-   Messages from Main Thread
-================================ */
-
-self.addEventListener("message", (event) => {
-  console.log("SW received message:", event.data);
-
-  if (event.data?.type === "SHOW_NOTIFICATION") {
-    const { title, options } = event.data;
-    self.registration.showNotification(title, options);
-  }
 });
