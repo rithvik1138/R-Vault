@@ -14,11 +14,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
 
-    // 🔔 PWA plugin (improves notification reliability)
+    // 🔔 PWA plugin (manifest only - Firebase handles service worker)
     VitePWA({
-      registerType: "autoUpdate",
-      devOptions: {
-        enabled: true,
+      // Disable service worker generation - Firebase provides its own
+      injectRegister: false,
+      workbox: {
+        // Don't generate service worker
+        globPatterns: [],
       },
       includeAssets: ["favicon.png", "favicon.ico"],
       manifest: {

@@ -71,9 +71,14 @@ export const usePushNotifications = () => {
       const permissionGranted = await requestPermission();
       if (!permissionGranted) return false;
 
-      // Register service worker if not already registered
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      // Check if service worker is already registered (Firebase may have registered it)
+      let registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        // Fallback: register a basic service worker if Firebase isn't being used
+        console.warn("No service worker found. Firebase should register /firebase-messaging-sw.js");
+      } else {
+        await navigator.serviceWorker.ready;
+      }
 
       // Note: For full web push, you'd need a VAPID key pair and backend
       // For now, we just track that the user wants notifications

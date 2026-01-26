@@ -73,6 +73,22 @@ export const useFirebaseNotifications = () => {
           ? initializeApp(FIREBASE_CONFIG)
           : getApps()[0];
 
+      // Register Firebase service worker first
+      if ("serviceWorker" in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register(
+            "/firebase-messaging-sw.js",
+            { scope: "/" }
+          );
+          console.log("🔥 Firebase service worker registered:", registration);
+          // Wait for service worker to be ready
+          await navigator.serviceWorker.ready;
+        } catch (error) {
+          console.error("Failed to register Firebase service worker:", error);
+          return false;
+        }
+      }
+
       const messaging = getMessaging(app);
 
       const permission = await Notification.requestPermission();
