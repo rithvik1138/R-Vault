@@ -45,7 +45,6 @@ interface GroupMessage {
 }
 
 export const useGroupChats = () => {
-  const supabaseClient = supabase as any;
   const { user } = useAuth();
   const { toast } = useToast();
   const [groups, setGroups] = useState<GroupChat[]>([]);
@@ -55,7 +54,7 @@ export const useGroupChats = () => {
     if (!user) return;
 
     setLoading(true);
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from("group_chats")
       .select("*")
       .order("updated_at", { ascending: false });
@@ -73,7 +72,7 @@ export const useGroupChats = () => {
 
     if (!user) return;
 
-    const channel = supabaseClient
+    const channel = supabase
       .channel(`group-chats-${user.id}`)
       .on(
         "postgres_changes",
@@ -89,7 +88,7 @@ export const useGroupChats = () => {
       .subscribe();
 
     return () => {
-      supabaseClient.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, [user, fetchGroups]);
 
@@ -97,7 +96,7 @@ export const useGroupChats = () => {
     if (!user) return null;
 
     // Create the group
-    const { data: group, error: groupError } = await supabaseClient
+    const { data: group, error: groupError } = await supabase
       .from("group_chats")
       .insert({ name, created_by: user.id })
       .select()
@@ -118,7 +117,7 @@ export const useGroupChats = () => {
       ...memberIds.map((id) => ({ group_id: group.id, user_id: id, role: "member" })),
     ];
 
-    const { error: membersError } = await supabaseClient
+    const { error: membersError } = await supabase
       .from("group_members")
       .insert(members);
 
@@ -129,7 +128,7 @@ export const useGroupChats = () => {
         variant: "destructive",
       });
       // Clean up the group
-      await supabaseClient.from("group_chats").delete().eq("id", group.id);
+      await supabase.from("group_chats").delete().eq("id", group.id);
       return null;
     }
 
@@ -142,7 +141,7 @@ export const useGroupChats = () => {
   };
 
   const updateGroup = async (groupId: string, name: string) => {
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from("group_chats")
       .update({ name })
       .eq("id", groupId);
@@ -157,7 +156,7 @@ export const useGroupChats = () => {
   };
 
   const deleteGroup = async (groupId: string) => {
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from("group_chats")
       .delete()
       .eq("id", groupId);
@@ -174,7 +173,7 @@ export const useGroupChats = () => {
   const leaveGroup = async (groupId: string) => {
     if (!user) return;
 
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from("group_members")
       .delete()
       .eq("group_id", groupId)
@@ -201,7 +200,6 @@ export const useGroupChats = () => {
 };
 
 export const useGroupMembers = (groupId: string | null) => {
-  const supabaseClient = supabase as any;
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -213,7 +211,7 @@ export const useGroupMembers = (groupId: string | null) => {
 
     setLoading(true);
     // Fetch members
-    const { data: membersData, error } = await supabaseClient
+    const { data: membersData, error } = await supabase
       .from("group_members")
       .select("*")
       .eq("group_id", groupId);
@@ -226,7 +224,7 @@ export const useGroupMembers = (groupId: string | null) => {
 
     // Fetch profiles separately
     const userIds = membersData?.map((m) => m.user_id) || [];
-    const { data: profiles } = await supabaseClient
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("id, display_name, username, avatar_url")
       .in("id", userIds);
@@ -246,7 +244,7 @@ export const useGroupMembers = (groupId: string | null) => {
 
     if (!groupId) return;
 
-    const channel = supabaseClient
+    const channel = supabase
       .channel(`group-members-${groupId}`)
       .on(
         "postgres_changes",
@@ -263,7 +261,7 @@ export const useGroupMembers = (groupId: string | null) => {
       .subscribe();
 
     return () => {
-      supabaseClient.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, [groupId, fetchMembers]);
 
@@ -273,7 +271,6 @@ export const useGroupMembers = (groupId: string | null) => {
 export const useGroupMessages = (groupId: string | null) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const supabaseClient = supabase as any;
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -286,7 +283,7 @@ export const useGroupMessages = (groupId: string | null) => {
     setLoading(true);
     
     // Fetch messages
-    const { data: messagesData, error } = await supabaseClient
+    const { data: messagesData, error } = await supabase
       .from("group_messages")
       .select("*")
       .eq("group_id", groupId)
@@ -300,7 +297,7 @@ export const useGroupMessages = (groupId: string | null) => {
 
     // Fetch sender profiles separately
     const senderIds = [...new Set(messagesData?.map((m) => m.sender_id) || [])];
-    const { data: profiles } = await supabaseClient
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("id, display_name, username, avatar_url")
       .in("id", senderIds);
@@ -321,7 +318,7 @@ export const useGroupMessages = (groupId: string | null) => {
 
     if (!groupId) return;
 
-    const channel = supabaseClient
+    const channel = supabase
       .channel(`group-messages-${groupId}`)
       .on(
         "postgres_changes",
@@ -334,7 +331,7 @@ export const useGroupMessages = (groupId: string | null) => {
         async (payload) => {
           const newMessage = payload.new as GroupMessage;
           // Fetch sender profile
-          const { data: profile } = await supabaseClient
+          const { data: profile } = await supabase
             .from("profiles")
             .select("id, display_name, username, avatar_url")
             .eq("id", newMessage.sender_id)
@@ -374,7 +371,7 @@ export const useGroupMessages = (groupId: string | null) => {
       .subscribe();
 
     return () => {
-      supabaseClient.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, [groupId, fetchMessages]);
 
@@ -388,7 +385,7 @@ export const useGroupMessages = (groupId: string | null) => {
       reply_to_id: replyToId || null,
     };
 
-    const { error } = await supabaseClient.from("group_messages").insert(insertData);
+    const { error } = await supabase.from("group_messages").insert(insertData);
 
     if (error) {
       toast({
@@ -402,7 +399,7 @@ export const useGroupMessages = (groupId: string | null) => {
   const editMessage = async (messageId: string, newContent: string) => {
     if (!user) return;
 
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from("group_messages")
       .update({ content: newContent, edited_at: new Date().toISOString() })
       .eq("id", messageId)
@@ -418,7 +415,7 @@ export const useGroupMessages = (groupId: string | null) => {
   };
 
   const deleteMessage = async (messageId: string) => {
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from("group_messages")
       .delete()
       .eq("id", messageId);
