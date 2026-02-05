@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Shield, Send, Search, Settings, LogOut, MoreVertical, 
-  Phone, VideoIcon, ChevronLeft, Users, ShieldCheck
+  Phone, VideoIcon, ChevronLeft, Users, ShieldCheck, Plus
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,6 +32,7 @@ import EmojiPicker from "@/components/EmojiPicker";
 import OnlineIndicator from "@/components/OnlineIndicator";
 import ReplyPreview from "@/components/ReplyPreview";
 import ForwardMessageModal from "@/components/ForwardMessageModal";
+import CreateGroupModal from "@/components/CreateGroupModal";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -52,13 +53,14 @@ const Chat = () => {
     mediaUrl: string | null;
     mediaType: string | null;
   } | null>(null);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
   const { friends } = useFriends();
-  const { messages, sendMessage, sendMediaMessage, deleteMessage, forwardMessage } = useMessages(selectedFriendId);
+  const { messages, sendMessage, sendMediaMessage, deleteMessage, forwardMessage, editMessage } = useMessages(selectedFriendId);
   const { isAdmin } = useAdmin();
   const { friendIsTyping, handleTyping, stopTyping } = useTypingIndicator(selectedFriendId);
   const { settings: privacySettings } = usePrivacySettings();
@@ -227,9 +229,18 @@ const Chat = () => {
               <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold gradient-text">R-Vault</span>
+              <span className="font-bold gradient-text">SecureHub</span>
             </Link>
             <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground hover:text-primary"
+                onClick={() => setShowCreateGroup(true)}
+                title="Create Group"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -446,13 +457,16 @@ const Chat = () => {
                     isOwn={msg.sender_id === user?.id}
                     time={msg.created_at}
                     readAt={msg.read_at}
+                    editedAt={(msg as { edited_at?: string | null }).edited_at}
                     reactions={getReactionsForMessage(msg.id)}
                     replyTo={getReplyToMessage(msg.reply_to_id)}
                     onDelete={deleteMessage}
                     onToggleReaction={toggleReaction}
                     onReply={handleReply}
                     onForward={handleForward}
+                    onEdit={editMessage}
                     canDelete={msg.sender_id === user?.id || isAdmin}
+                    canEdit={msg.sender_id === user?.id}
                   />
                 ))
               )}
@@ -514,7 +528,7 @@ const Chat = () => {
               <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to R-Vault</h2>
+              <h2 className="text-xl font-semibold mb-2">Welcome to SecureHub</h2>
               <p className="text-muted-foreground mb-4">Select a friend to start chatting</p>
               {isAdmin && (
                 <p className="text-xs text-primary flex items-center justify-center gap-1 mb-4">
@@ -577,6 +591,12 @@ const Chat = () => {
         messageMediaType={forwardingMessage?.mediaType || null}
         onForward={handleConfirmForward}
         isOnline={isOnline}
+      />
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        open={showCreateGroup}
+        onOpenChange={setShowCreateGroup}
       />
     </div>
   );

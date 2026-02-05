@@ -10,27 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Users } from "lucide-react";
-
-interface Friend {
-  id: string;
-  display_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-}
+import { useFriends } from "@/hooks/use-friends";
+import { useGroupChats } from "@/hooks/use-group-chats";
 
 interface CreateGroupModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  friends: Friend[];
-  onCreateGroup: (name: string, memberIds: string[]) => Promise<void>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const CreateGroupModal = ({
-  isOpen,
-  onClose,
-  friends,
-  onCreateGroup,
+  open,
+  onOpenChange,
 }: CreateGroupModalProps) => {
+  const { friends } = useFriends();
+  const { createGroup } = useGroupChats();
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -47,11 +40,11 @@ const CreateGroupModal = ({
     if (!groupName.trim() || selectedMembers.length === 0) return;
 
     setIsCreating(true);
-    await onCreateGroup(groupName.trim(), selectedMembers);
+    await createGroup(groupName.trim(), selectedMembers);
     setIsCreating(false);
     setGroupName("");
     setSelectedMembers([]);
-    onClose();
+    onOpenChange(false);
   };
 
   const getInitials = (name: string | null) => {
@@ -65,7 +58,7 @@ const CreateGroupModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -139,7 +132,7 @@ const CreateGroupModal = ({
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
