@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Lock, Users, Zap, Image } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import LockerIntro from "@/components/LockerIntro";
+import { useAuth } from "@/hooks/use-auth";
 
 const Index = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [showIntro, setShowIntro] = useState(true);
   const [hasEntered, setHasEntered] = useState(false);
 
@@ -17,6 +20,13 @@ const Index = () => {
       setHasEntered(true);
     }
   }, []);
+
+  // If already logged in, go straight to chat
+  useEffect(() => {
+    if (user) {
+      navigate("/chat");
+    }
+  }, [user, navigate]);
 
   const handleEnter = () => {
     sessionStorage.setItem("r-vault-intro-seen", "true");

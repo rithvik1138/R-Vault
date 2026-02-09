@@ -73,9 +73,10 @@ export const useFirebaseNotifications = () => {
           : getApps()[0];
 
       // Register Firebase service worker
+      let registration: ServiceWorkerRegistration | undefined;
       if ("serviceWorker" in navigator) {
         try {
-          let registration = await navigator.serviceWorker.getRegistration();
+          registration = await navigator.serviceWorker.getRegistration();
 
           if (
             !registration ||
@@ -121,6 +122,8 @@ export const useFirebaseNotifications = () => {
 
       const token = await getToken(messaging, {
         vapidKey: FIREBASE_CONFIG.vapidKey,
+        // Explicitly bind to the Firebase SW registration if available
+        serviceWorkerRegistration: registration,
       });
 
       if (!token) return false;
