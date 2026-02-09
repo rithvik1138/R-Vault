@@ -36,6 +36,13 @@ import OnlineIndicator from "@/components/OnlineIndicator";
 import ReplyPreview from "@/components/ReplyPreview";
 import ForwardMessageModal from "@/components/ForwardMessageModal";
 import CreateGroupModal from "@/components/CreateGroupModal";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -97,7 +104,7 @@ const Chat = () => {
   useUnreadCount();
 
   // Group chat hooks
-  const { groups, createGroup, refreshGroups } = useGroupChats();
+  const { groups, createGroup, refreshGroups, updateGroup, deleteGroup, leaveGroup } = useGroupChats();
   const { messages: groupMessages, sendMessage: sendGroupMessage, sendMediaMessage: sendGroupMediaMessage, editMessage: editGroupMessage, deleteMessage: deleteGroupMessage } = useGroupMessages(selectedGroupId);
   const { members: groupMembers } = useGroupMembers(selectedGroupId);
 
@@ -159,6 +166,32 @@ const Chat = () => {
 
   const handleGroupReply = (messageId: string, content: string | null, senderName: string) => {
     setGroupReplyTo({ id: messageId, content, senderName });
+  };
+
+  const handleRenameGroup = async () => {
+    if (!selectedGroup) return;
+    const newName = window.prompt("Enter new group name:", selectedGroup.name);
+    if (!newName || newName.trim() === "" || newName === selectedGroup.name) return;
+    await updateGroup(selectedGroup.id, newName.trim());
+    await refreshGroups();
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!selectedGroup) return;
+    const confirmed = window.confirm(`Delete group "${selectedGroup.name}" for everyone?`);
+    if (!confirmed) return;
+    await deleteGroup(selectedGroup.id);
+    await refreshGroups();
+    setSelectedGroupId(null);
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!selectedGroup) return;
+    const confirmed = window.confirm(`Leave group "${selectedGroup.name}"?`);
+    if (!confirmed) return;
+    await leaveGroup(selectedGroup.id);
+    await refreshGroups();
+    setSelectedGroupId(null);
   };
 
   const getGroupReplyToMessage = (replyToId: string | null | undefined) => {
@@ -670,9 +703,41 @@ const Chat = () => {
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleRenameGroup}>
+                      Rename group
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLeaveGroup}>
+                      Leave group
+                    </DropdownMenuItem>
+                    {/* Only show delete for creator/admin */}
+                    {groupMembers.some(
+                      (m) =>
+                        m.user_id === user.id &&
+                        (m.role === "admin" || selectedGroup.created_by === user.id)
+                    ) && (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={handleDeleteGroup}
+                      >
+                        Delete group
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </header>
 
             {/* Group Messages */}

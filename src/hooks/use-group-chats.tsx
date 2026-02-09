@@ -137,7 +137,10 @@ export const useGroupChats = () => {
       description: `Group "${name}" created!`,
     });
 
-    return group;
+    // Optimistically update local state so the new group appears immediately
+    setGroups((prev) => [group as GroupChat, ...prev]);
+
+    return group as GroupChat;
   };
 
   const updateGroup = async (groupId: string, name: string) => {
