@@ -54,7 +54,7 @@ const sendBrowserNotification = (title: string, body: string, icon?: string) => 
   }
 };
 
-export const useNotifications = (currentChatFriendId: string | null, notificationsEnabled: boolean = true) => {
+export const useNotifications = (currentChatFriendId: string | null, notificationsEnabled: boolean = true, currentGroupId?: string | null) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">("default");
@@ -84,6 +84,7 @@ export const useNotifications = (currentChatFriendId: string | null, notificatio
     return data;
   }, []);
 
+  // DM notifications
   useEffect(() => {
     if (!user || !notificationsEnabled) return;
 
@@ -103,7 +104,6 @@ export const useNotifications = (currentChatFriendId: string | null, notificatio
           // Don't notify if we're currently chatting with this person
           if (currentChatFriendId === newMessage.sender_id) return;
 
-          // Fetch sender profile
           const senderProfile = await fetchSenderProfile(newMessage.sender_id);
           const senderName = senderProfile?.display_name || senderProfile?.username || "Someone";
 
@@ -118,13 +118,11 @@ export const useNotifications = (currentChatFriendId: string | null, notificatio
             messagePreview = "🎥 Sent you a video";
           }
 
-          // Show in-app toast
           toast({
             title: `New message from ${senderName}`,
             description: messagePreview,
           });
 
-          // Send browser notification if page is not focused
           if (document.hidden || !document.hasFocus()) {
             sendBrowserNotification(
               `New message from ${senderName}`,
@@ -139,6 +137,60 @@ export const useNotifications = (currentChatFriendId: string | null, notificatio
       supabase.removeChannel(channel);
     };
   }, [user, currentChatFriendId, toast, fetchSenderProfile, notificationsEnabled]);
+
+  // Group message notifications
+  useEffect(() => {
+    if (!user || !notificationsEnabled) return;
+
+    const channel = supabase
+      .channel(`group-notifications-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "group_messages",
+        },
+        async (payload) => {
+          const newMessage = payload.new as { id: string; group_id: string; sender_id: string; content: string | null; media_type: string | null };
+          
+          // Don't notify for own messages or if viewing this group
+          if (newMessage.sender_id === user.id) return;
+          if (currentGroupId === newMessage.group_id) return;
+
+          const senderProfile = await fetchSenderProfile(newMessage.sender_id);
+          const senderName = senderProfile?.display_name || senderProfile?.username || "Someone";
+
+          let messagePreview = "Sent a message";
+          if (newMessage.content) {
+            messagePreview = newMessage.content.length > 50 
+              ? newMessage.content.slice(0, 50) + "..." 
+              : newMessage.content;
+          } else if (newMessage.media_type === "image") {
+            messagePreview = "📷 Sent an image";
+          } else if (newMessage.media_type === "video") {
+            messagePreview = "🎥 Sent a video";
+          }
+
+          toast({
+            title: `${senderName} in group`,
+            description: messagePreview,
+          });
+
+          if (document.hidden || !document.hasFocus()) {
+            sendBrowserNotification(
+              `${senderName} in group`,
+              messagePreview
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, currentGroupId, toast, fetchSenderProfile, notificationsEnabled]);
 
   return { notificationPermission };
 };
