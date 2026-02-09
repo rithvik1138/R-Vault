@@ -4,7 +4,7 @@ import { useAuth } from "./use-auth";
 import { useToast } from "./use-toast";
 
 /* ================================
-   Firebase Configuration (FIXED)
+   Firebase Configuration
 ================================ */
 
 const FIREBASE_CONFIG = {
@@ -14,9 +14,8 @@ const FIREBASE_CONFIG = {
   storageBucket: "r-vault-2a308.firebasestorage.app",
   messagingSenderId: "485639092097",
   appId: "1:485639092097:web:00347d69cea82e23491a80",
-
-  // 🔑 REQUIRED (get from Firebase → Cloud Messaging → Web Push certificates)
-  vapidKey: "BC3NoIiMetyujaenjALxYEXbwrYDX7W89yhMcrI7DGHUExKqNCEwqx-tmey4LA0IqkKlRBR3WGNf175JNdqhBaU",
+  vapidKey:
+    "BC3NoIiMetyujaenjALxYEXbwrYDX7W89yhMcrI7DGHUExKqNCEwqx-tmey4LA0IqkKlRBR3WGNf175JNdqhBaU",
 };
 
 export const useFirebaseNotifications = () => {
@@ -50,8 +49,8 @@ export const useFirebaseNotifications = () => {
 
   const isConfigured = Boolean(
     FIREBASE_CONFIG.apiKey &&
-    FIREBASE_CONFIG.projectId &&
-    FIREBASE_CONFIG.vapidKey
+      FIREBASE_CONFIG.projectId &&
+      FIREBASE_CONFIG.vapidKey
   );
 
   const initializeFirebase = useCallback(async () => {
@@ -73,28 +72,36 @@ export const useFirebaseNotifications = () => {
           ? initializeApp(FIREBASE_CONFIG)
           : getApps()[0];
 
-      // Register Firebase service worker first (REQUIRED for background notifications)
+      // Register Firebase service worker
       if ("serviceWorker" in navigator) {
         try {
-          // Check if already registered
           let registration = await navigator.serviceWorker.getRegistration();
-          
-          // Check if it's our Firebase service worker
-          if (!registration || !registration.active?.scriptURL.includes("firebase-messaging-sw.js")) {
+
+          if (
+            !registration ||
+            !registration.active?.scriptURL.includes(
+              "firebase-messaging-sw.js"
+            )
+          ) {
             registration = await navigator.serviceWorker.register(
               "/firebase-messaging-sw.js",
               { scope: "/" }
             );
-            console.log("🔥 Firebase service worker registered:", registration);
+            console.log(
+              "🔥 Firebase service worker registered:",
+              registration
+            );
           } else {
             console.log("🔥 Firebase service worker already registered");
           }
-          
-          // Wait for service worker to be ready
+
           await navigator.serviceWorker.ready;
           console.log("🔥 Service worker is ready");
         } catch (error) {
-          console.error("❌ Failed to register Firebase service worker:", error);
+          console.error(
+            "❌ Failed to register Firebase service worker:",
+            error
+          );
           return false;
         }
       } else {
@@ -104,10 +111,10 @@ export const useFirebaseNotifications = () => {
 
       const messaging = getMessaging(app);
 
-      const permission = await Notification.requestPermission();
-      setPermission(permission);
+      const notifPermission = await Notification.requestPermission();
+      setPermission(notifPermission);
 
-      if (permission !== "granted") {
+      if (notifPermission !== "granted") {
         console.log("Notification permission denied");
         return false;
       }
@@ -131,10 +138,13 @@ export const useFirebaseNotifications = () => {
         });
 
         if (Notification.permission === "granted") {
-          new Notification(payload.notification?.title || "New notification", {
-            body: payload.notification?.body,
-            icon: "/favicon.png",
-          });
+          new Notification(
+            payload.notification?.title || "New notification",
+            {
+              body: payload.notification?.body,
+              icon: "/favicon.png",
+            }
+          );
         }
       });
 
@@ -217,6 +227,23 @@ export const useFirebaseNotifications = () => {
     []
   );
 
+  const requestPermission = useCallback(async () => {
+    if (!("Notification" in window)) return false;
+
+    if (Notification.permission === "granted") {
+      setPermission("granted");
+      return true;
+    }
+
+    if (Notification.permission !== "denied") {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      return result === "granted";
+    }
+
+    return false;
+  }, []);
+
   return {
     isSupported,
     isConfigured,
@@ -224,6 +251,7 @@ export const useFirebaseNotifications = () => {
     permission,
     fcmToken,
     initializeFirebase,
+    requestPermission,
     sendLocalNotification,
     removeFcmToken,
   };

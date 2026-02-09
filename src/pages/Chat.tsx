@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Shield, Send, Search, Settings, LogOut, MoreVertical, 
-  Phone, VideoIcon, ChevronLeft, Users, ShieldCheck, Plus
+  Phone, VideoIcon, ChevronLeft, Users, ShieldCheck, Plus,
+  MessageSquare, UsersRound
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,8 +22,10 @@ import { useLastSeen } from "@/hooks/use-last-seen";
 import { useMessageReactions } from "@/hooks/use-message-reactions";
 import { useReadReceipts } from "@/hooks/use-read-receipts";
 import { useUnreadCount } from "@/hooks/use-unread-count";
+import { useGroupChats, useGroupMessages, useGroupMembers } from "@/hooks/use-group-chats";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
+import GroupChatMessage from "@/components/GroupChatMessage";
 import MediaUpload from "@/components/MediaUpload";
 import TypingIndicator from "@/components/TypingIndicator";
 import SettingsDialog from "@/components/SettingsDialog";
@@ -36,6 +39,8 @@ import CreateGroupModal from "@/components/CreateGroupModal";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<"dms" | "groups">("dms");
   const [message, setMessage] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showFriendsManager, setShowFriendsManager] = useState(false);
@@ -54,6 +59,11 @@ const Chat = () => {
     mediaType: string | null;
   } | null>(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupReplyTo, setGroupReplyTo] = useState<{
+    id: string;
+    content: string | null;
+    senderName: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isMobile = useIsMobile();
@@ -86,10 +96,16 @@ const Chat = () => {
   // Unread count for browser title
   useUnreadCount();
 
+  // Group chat hooks
+  const { groups, createGroup, refreshGroups } = useGroupChats();
+  const { messages: groupMessages, sendMessage: sendGroupMessage, sendMediaMessage: sendGroupMediaMessage, editMessage: editGroupMessage, deleteMessage: deleteGroupMessage } = useGroupMessages(selectedGroupId);
+  const { members: groupMembers } = useGroupMembers(selectedGroupId);
+
   // Enable in-app notifications for messages from other conversations
-  useNotifications(selectedFriendId, privacySettings.notificationsEnabled);
+  useNotifications(selectedFriendId, privacySettings.notificationsEnabled, selectedGroupId);
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
+  const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -101,7 +117,7 @@ const Chat = () => {
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, groupMessages]);
 
   // Open call modal when call is active
   useEffect(() => {
@@ -111,12 +127,51 @@ const Chat = () => {
   }, [webrtcCall.callState]);
 
   const handleSendMessage = async () => {
-    if (message.trim()) {
+    if (!message.trim()) return;
+    
+    if (selectedGroupId) {
+      await sendGroupMessage(message, groupReplyTo?.id);
+      setMessage("");
+      setGroupReplyTo(null);
+    } else if (selectedFriendId) {
       stopTyping();
       await sendMessage(message, replyTo?.id);
       setMessage("");
       setReplyTo(null);
     }
+  };
+
+  const handleSelectGroup = (groupId: string) => {
+    setSelectedGroupId(groupId);
+    setSelectedFriendId(null);
+    setReplyTo(null);
+    setGroupReplyTo(null);
+    if (isMobile) setShowSidebar(false);
+  };
+
+  const handleSelectFriend = (friendId: string) => {
+    setSelectedFriendId(friendId);
+    setSelectedGroupId(null);
+    setReplyTo(null);
+    setGroupReplyTo(null);
+    if (isMobile) setShowSidebar(false);
+  };
+
+  const handleGroupReply = (messageId: string, content: string | null, senderName: string) => {
+    setGroupReplyTo({ id: messageId, content, senderName });
+  };
+
+  const getGroupReplyToMessage = (replyToId: string | null | undefined) => {
+    if (!replyToId) return null;
+    const msg = groupMessages.find(m => m.id === replyToId);
+    if (!msg) return null;
+    return {
+      id: msg.id,
+      content: msg.content,
+      senderName: msg.sender_id === user?.id
+        ? "You"
+        : (msg.sender?.display_name || msg.sender?.username || "Unknown"),
+    };
   };
 
   const handleReply = (messageId: string, content: string | null, senderName: string) => {
@@ -229,7 +284,7 @@ const Chat = () => {
               <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold gradient-text">SecureHub</span>
+              <span className="font-bold gradient-text">R-Vault</span>
             </Link>
             <div className="flex items-center gap-1">
               <Button 
@@ -311,17 +366,44 @@ const Chat = () => {
           )}
         </div>
 
-        {/* Friends Manager or Contacts List */}
+        {/* Tab switcher */}
+        {!showFriendsManager && (
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setSidebarTab("dms")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
+                sidebarTab === "dms"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              DMs
+            </button>
+            <button
+              onClick={() => setSidebarTab("groups")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
+                sidebarTab === "groups"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <UsersRound className="w-4 h-4" />
+              Groups
+            </button>
+          </div>
+        )}
+
+        {/* Friends Manager or Contacts/Groups List */}
         <div className="flex-1 overflow-hidden">
           {showFriendsManager ? (
             <FriendsManager 
               onSelectFriend={(friendId) => {
-                setSelectedFriendId(friendId);
+                handleSelectFriend(friendId);
                 setShowFriendsManager(false);
-                if (isMobile) setShowSidebar(false);
               }}
             />
-          ) : (
+          ) : sidebarTab === "dms" ? (
             <div className="h-full overflow-y-auto py-2">
               {friends.length === 0 ? (
                 <div className="text-center py-8 px-4 text-muted-foreground">
@@ -337,10 +419,7 @@ const Chat = () => {
                 friends.map((friend) => (
                   <button
                     key={friend.id}
-                    onClick={() => {
-                      setSelectedFriendId(friend.id);
-                      if (isMobile) setShowSidebar(false);
-                    }}
+                    onClick={() => handleSelectFriend(friend.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors ${
                       selectedFriendId === friend.id ? 'bg-secondary' : ''
                     }`}
@@ -373,6 +452,47 @@ const Chat = () => {
                 ))
               )}
             </div>
+          ) : (
+            /* Groups Tab */
+            <div className="h-full overflow-y-auto py-2">
+              {groups.length === 0 ? (
+                <div className="text-center py-8 px-4 text-muted-foreground">
+                  <UsersRound className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm font-medium mb-1">No groups yet</p>
+                  <p className="text-xs mb-3">Create a group to chat with friends!</p>
+                  <Button variant="hero" size="sm" onClick={() => setShowCreateGroup(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Group
+                  </Button>
+                </div>
+              ) : (
+                groups.map((group) => (
+                  <button
+                    key={group.id}
+                    onClick={() => handleSelectGroup(group.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors ${
+                      selectedGroupId === group.id ? 'bg-secondary' : ''
+                    }`}
+                  >
+                    {group.avatar_url ? (
+                      <img 
+                        src={group.avatar_url} 
+                        alt={group.name} 
+                        className="w-11 h-11 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-gradient-primary flex items-center justify-center">
+                        <UsersRound className="w-5 h-5 text-primary-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-medium truncate">{group.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">Group chat</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
           )}
         </div>
       </aside>
@@ -381,7 +501,7 @@ const Chat = () => {
       <main className="flex-1 flex flex-col min-w-0">
         {selectedFriend ? (
           <>
-            {/* Chat Header */}
+            {/* DM Chat Header */}
             <header className="h-16 px-4 border-b border-border flex items-center justify-between bg-card/50 backdrop-blur-sm">
               <div className="flex items-center gap-3">
                 {isMobile && (
@@ -440,7 +560,7 @@ const Chat = () => {
               </div>
             </header>
 
-            {/* Messages */}
+            {/* DM Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center h-full">
@@ -476,7 +596,7 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Reply Preview */}
+            {/* DM Reply Preview */}
             {replyTo && (
               <ReplyPreview
                 replyToMessage={replyTo}
@@ -484,7 +604,7 @@ const Chat = () => {
               />
             )}
 
-            {/* Message Input */}
+            {/* DM Message Input */}
             <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
@@ -522,14 +642,119 @@ const Chat = () => {
               </div>
             </div>
           </>
+        ) : selectedGroup ? (
+          <>
+            {/* Group Chat Header */}
+            <header className="h-16 px-4 border-b border-border flex items-center justify-between bg-card/50 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                {isMobile && (
+                  <Button variant="ghost" size="icon" onClick={() => setShowSidebar(true)}>
+                    <ChevronLeft className="w-5 h-5" />
+                  </Button>
+                )}
+                {selectedGroup.avatar_url ? (
+                  <img 
+                    src={selectedGroup.avatar_url} 
+                    alt={selectedGroup.name} 
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
+                    <UsersRound className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold">{selectedGroup.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </header>
+
+            {/* Group Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {groupMessages.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center h-full">
+                  <p className="text-muted-foreground text-sm">No messages yet. Say hello to the group!</p>
+                </div>
+              ) : (
+                groupMessages.map((msg) => (
+                  <GroupChatMessage
+                    key={msg.id}
+                    id={msg.id}
+                    content={msg.content}
+                    mediaUrl={msg.media_url}
+                    mediaType={msg.media_type}
+                    isOwn={msg.sender_id === user?.id}
+                    time={msg.created_at}
+                    editedAt={msg.edited_at}
+                    sender={msg.sender}
+                    replyTo={getGroupReplyToMessage(msg.reply_to_id)}
+                    onDelete={deleteGroupMessage}
+                    onEdit={editGroupMessage}
+                    onReply={handleGroupReply}
+                    canDelete={msg.sender_id === user?.id || isAdmin}
+                    canEdit={msg.sender_id === user?.id}
+                  />
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Group Reply Preview */}
+            {groupReplyTo && (
+              <ReplyPreview
+                replyToMessage={groupReplyTo}
+                onCancelReply={() => setGroupReplyTo(null)}
+              />
+            )}
+
+            {/* Group Message Input */}
+            <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <MediaUpload 
+                    onUpload={sendGroupMediaMessage}
+                    disabled={!selectedGroupId}
+                  />
+                </div>
+                <div className="flex-1 flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Type a message..."
+                      className="pr-10 bg-secondary border-border focus:border-primary"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <EmojiPicker onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)} />
+                    </div>
+                  </div>
+                  <Button 
+                    variant="hero" 
+                    size="icon" 
+                    onClick={handleSendMessage}
+                    disabled={!message.trim()}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to SecureHub</h2>
-              <p className="text-muted-foreground mb-4">Select a friend to start chatting</p>
+              <h2 className="text-xl font-semibold mb-2">Welcome to R-Vault</h2>
+              <p className="text-muted-foreground mb-4">Select a conversation to start chatting</p>
               {isAdmin && (
                 <p className="text-xs text-primary flex items-center justify-center gap-1 mb-4">
                   <ShieldCheck className="w-3.5 h-3.5" />
@@ -597,6 +822,16 @@ const Chat = () => {
       <CreateGroupModal
         open={showCreateGroup}
         onOpenChange={setShowCreateGroup}
+        onCreateGroup={async (name, memberIds) => {
+          const group = await createGroup(name, memberIds);
+          // Ensure sidebar updates even if Realtime isn't enabled
+          await refreshGroups();
+          if (group?.id) {
+            setSidebarTab("groups");
+            handleSelectGroup(group.id);
+          }
+          return group;
+        }}
       />
     </div>
   );

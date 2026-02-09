@@ -396,6 +396,43 @@ export const useGroupMessages = (groupId: string | null) => {
     }
   };
 
+  const sendMediaMessage = async (file: File) => {
+    if (!user || !groupId) return;
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `groups/${groupId}/${user.id}/${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("chat-media")
+      .upload(fileName, file);
+
+    if (uploadError) {
+      toast({
+        title: "Error",
+        description: "Failed to upload media",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const mediaType = file.type.startsWith("video/") ? "video" : "image";
+
+    const { error } = await supabase.from("group_messages").insert({
+      group_id: groupId,
+      sender_id: user.id,
+      media_url: fileName,
+      media_type: mediaType,
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send media message",
+        variant: "destructive",
+      });
+    }
+  };
+
   const editMessage = async (messageId: string, newContent: string) => {
     if (!user) return;
 
@@ -433,6 +470,7 @@ export const useGroupMessages = (groupId: string | null) => {
     messages,
     loading,
     sendMessage,
+    sendMediaMessage,
     editMessage,
     deleteMessage,
     refreshMessages: fetchMessages,
