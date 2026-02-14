@@ -33,8 +33,11 @@ export const usePushNotifications = () => {
   const checkSubscription = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
+      const mgr = (registration as any).pushManager;
+      if (mgr) {
+        const subscription = await mgr.getSubscription();
+        setIsSubscribed(!!subscription);
+      }
     } catch (error) {
       console.log("Push not available:", error);
     }
@@ -71,14 +74,9 @@ export const usePushNotifications = () => {
       const permissionGranted = await requestPermission();
       if (!permissionGranted) return false;
 
-      // Check if service worker is already registered (Firebase may have registered it)
-      let registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        // Fallback: register a basic service worker if Firebase isn't being used
-        console.warn("No service worker found. Firebase should register /firebase-messaging-sw.js");
-      } else {
-        await navigator.serviceWorker.ready;
-      }
+      // Register service worker if not already registered
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
 
       // Note: For full web push, you'd need a VAPID key pair and backend
       // For now, we just track that the user wants notifications
@@ -96,7 +94,7 @@ export const usePushNotifications = () => {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const subscription = await (registration as any).pushManager?.getSubscription();
       
       if (subscription) {
         await subscription.unsubscribe();

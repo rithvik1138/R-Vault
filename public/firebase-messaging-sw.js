@@ -1,85 +1,57 @@
-/* =========================================
-   Firebase Cloud Messaging Service Worker
-   File: public/firebase-messaging-sw.js
-========================================= */
+/* eslint-disable no-undef */
+// Firebase Cloud Messaging Service Worker
+// This runs in the background even when the app is closed
 
-// Firebase SDKs (compat is REQUIRED in SW)
-importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
-// 🔐 Firebase config (SAFE to be public)
 firebase.initializeApp({
   apiKey: "AIzaSyD0Viou5Xp1V1jC6gTMkqxZDXTE2024pSk",
   authDomain: "r-vault-2a308.firebaseapp.com",
   projectId: "r-vault-2a308",
+  storageBucket: "r-vault-2a308.firebasestorage.app",
   messagingSenderId: "485639092097",
   appId: "1:485639092097:web:00347d69cea82e23491a80",
 });
 
-// Initialize messaging
 const messaging = firebase.messaging();
 
-/* =========================================
-   🔔 BACKGROUND NOTIFICATIONS (APP CLOSED)
-========================================= */
-
+// Handle background messages (when app is closed or in background)
 messaging.onBackgroundMessage((payload) => {
-  console.log("[SW] Background message received:", payload);
-  
-  // Extract from data field (required for background notifications)
-  const { title, body, url } = payload.data || {};
-  
-  if (!title || !body) {
-    console.error("[SW] Missing title or body in payload.data");
-    return;
-  }
+  console.log("[firebase-messaging-sw.js] Background message:", payload);
 
-  const notificationOptions = {
-    body,
+  const title = payload.notification?.title || "R-Vault";
+  const options = {
+    body: payload.notification?.body || "You have a new message",
     icon: "/favicon.png",
     badge: "/favicon.png",
-    data: { url: url || "/chat" },
-    tag: "r-vault-message",
-    requireInteraction: false,
+    tag: "r-vault-notification",
+    data: payload.data || {},
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
   };
 
-  self.registration.showNotification(title, notificationOptions);
+  self.registration.showNotification(title, options);
 });
 
-/* =========================================
-   🔁 INSTALL & ACTIVATE
-========================================= */
-
-self.addEventListener("install", () => {
-  console.log("[SW] Installed");
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  console.log("[SW] Activated");
-  event.waitUntil(self.clients.claim());
-});
-
-/* =========================================
-   👉 NOTIFICATION CLICK
-========================================= */
-
+// Handle notification click
 self.addEventListener("notificationclick", (event) => {
-  console.log("[SW] Notification click");
   event.notification.close();
 
   const urlToOpen = event.notification.data?.url || "/chat";
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsArr) => {
-      for (const client of clientsArr) {
-        if (client.url.includes(self.location.origin)) {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
           client.focus();
           client.navigate(urlToOpen);
           return;
         }
       }
-      return clients.openWindow(urlToOpen);
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
     })
   );
 });

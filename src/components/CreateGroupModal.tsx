@@ -11,19 +11,19 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Users } from "lucide-react";
 import { useFriends } from "@/hooks/use-friends";
+import { useGroupChats } from "@/hooks/use-group-chats";
 
 interface CreateGroupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateGroup: (name: string, memberIds: string[]) => Promise<{ id: string } | null>;
 }
 
 const CreateGroupModal = ({
   open,
   onOpenChange,
-  onCreateGroup,
 }: CreateGroupModalProps) => {
   const { friends } = useFriends();
+  const { createGroup } = useGroupChats();
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -40,7 +40,7 @@ const CreateGroupModal = ({
     if (!groupName.trim() || selectedMembers.length === 0) return;
 
     setIsCreating(true);
-    await onCreateGroup(groupName.trim(), selectedMembers);
+    await createGroup(groupName.trim(), selectedMembers);
     setIsCreating(false);
     setGroupName("");
     setSelectedMembers([]);

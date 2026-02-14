@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { 
   Shield, Send, Search, Settings, LogOut, MoreVertical, 
   Phone, VideoIcon, ChevronLeft, Users, ShieldCheck, Plus,
-  MessageSquare, UsersRound
+  MessageSquare, UsersRound, UserCog
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,13 +36,7 @@ import OnlineIndicator from "@/components/OnlineIndicator";
 import ReplyPreview from "@/components/ReplyPreview";
 import ForwardMessageModal from "@/components/ForwardMessageModal";
 import CreateGroupModal from "@/components/CreateGroupModal";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import GroupMembersPanel from "@/components/GroupMembersPanel";
 
 const Chat = () => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
@@ -66,6 +60,7 @@ const Chat = () => {
     mediaType: string | null;
   } | null>(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [groupReplyTo, setGroupReplyTo] = useState<{
     id: string;
     content: string | null;
@@ -104,9 +99,9 @@ const Chat = () => {
   useUnreadCount();
 
   // Group chat hooks
-  const { groups, createGroup, refreshGroups, updateGroup, deleteGroup, leaveGroup } = useGroupChats();
+  const { groups } = useGroupChats();
   const { messages: groupMessages, sendMessage: sendGroupMessage, sendMediaMessage: sendGroupMediaMessage, editMessage: editGroupMessage, deleteMessage: deleteGroupMessage } = useGroupMessages(selectedGroupId);
-  const { members: groupMembers } = useGroupMembers(selectedGroupId);
+  const { members: groupMembers, refreshMembers: refreshGroupMembers } = useGroupMembers(selectedGroupId);
 
   // Enable in-app notifications for messages from other conversations
   useNotifications(selectedFriendId, privacySettings.notificationsEnabled, selectedGroupId);
@@ -166,32 +161,6 @@ const Chat = () => {
 
   const handleGroupReply = (messageId: string, content: string | null, senderName: string) => {
     setGroupReplyTo({ id: messageId, content, senderName });
-  };
-
-  const handleRenameGroup = async () => {
-    if (!selectedGroup) return;
-    const newName = window.prompt("Enter new group name:", selectedGroup.name);
-    if (!newName || newName.trim() === "" || newName === selectedGroup.name) return;
-    await updateGroup(selectedGroup.id, newName.trim());
-    await refreshGroups();
-  };
-
-  const handleDeleteGroup = async () => {
-    if (!selectedGroup) return;
-    const confirmed = window.confirm(`Delete group "${selectedGroup.name}" for everyone?`);
-    if (!confirmed) return;
-    await deleteGroup(selectedGroup.id);
-    await refreshGroups();
-    setSelectedGroupId(null);
-  };
-
-  const handleLeaveGroup = async () => {
-    if (!selectedGroup) return;
-    const confirmed = window.confirm(`Leave group "${selectedGroup.name}"?`);
-    if (!confirmed) return;
-    await leaveGroup(selectedGroup.id);
-    await refreshGroups();
-    setSelectedGroupId(null);
   };
 
   const getGroupReplyToMessage = (replyToId: string | null | undefined) => {
@@ -676,142 +645,129 @@ const Chat = () => {
             </div>
           </>
         ) : selectedGroup ? (
-          <>
-            {/* Group Chat Header */}
-            <header className="h-16 px-4 border-b border-border flex items-center justify-between bg-card/50 backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                {isMobile && (
-                  <Button variant="ghost" size="icon" onClick={() => setShowSidebar(true)}>
-                    <ChevronLeft className="w-5 h-5" />
-                  </Button>
-                )}
-                {selectedGroup.avatar_url ? (
-                  <img 
-                    src={selectedGroup.avatar_url} 
-                    alt={selectedGroup.name} 
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
-                    <UsersRound className="w-5 h-5 text-primary-foreground" />
+          <div className="flex-1 flex min-w-0">
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Group Chat Header */}
+              <header className="h-16 px-4 border-b border-border flex items-center justify-between bg-card/50 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  {isMobile && (
+                    <Button variant="ghost" size="icon" onClick={() => setShowSidebar(true)}>
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                  )}
+                  {selectedGroup.avatar_url ? (
+                    <img 
+                      src={selectedGroup.avatar_url} 
+                      alt={selectedGroup.name} 
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
+                      <UsersRound className="w-5 h-5 text-primary-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold">{selectedGroup.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
+                    </p>
                   </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowGroupMembers(!showGroupMembers)}
+                  title="Manage Members"
+                >
+                  <UserCog className="w-4 h-4" />
+                </Button>
+              </header>
+
+              {/* Group Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {groupMessages.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <p className="text-muted-foreground text-sm">No messages yet. Say hello to the group!</p>
+                  </div>
+                ) : (
+                  groupMessages.map((msg) => (
+                    <GroupChatMessage
+                      key={msg.id}
+                      id={msg.id}
+                      content={msg.content}
+                      mediaUrl={msg.media_url}
+                      mediaType={msg.media_type}
+                      isOwn={msg.sender_id === user?.id}
+                      time={msg.created_at}
+                      editedAt={msg.edited_at}
+                      sender={msg.sender}
+                      replyTo={getGroupReplyToMessage(msg.reply_to_id)}
+                      onDelete={deleteGroupMessage}
+                      onEdit={editGroupMessage}
+                      onReply={handleGroupReply}
+                      canDelete={msg.sender_id === user?.id || isAdmin}
+                      canEdit={msg.sender_id === user?.id}
+                    />
+                  ))
                 )}
-                <div>
-                  <p className="font-semibold">{selectedGroup.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
-                  </p>
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Group Reply Preview */}
+              {groupReplyTo && (
+                <ReplyPreview
+                  replyToMessage={groupReplyTo}
+                  onCancelReply={() => setGroupReplyTo(null)}
+                />
+              )}
+
+              {/* Group Message Input */}
+              <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <MediaUpload 
+                      onUpload={sendGroupMediaMessage}
+                      disabled={!selectedGroupId}
+                    />
+                  </div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <Input
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type a message..."
+                        className="pr-10 bg-secondary border-border focus:border-primary"
+                      />
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                        <EmojiPicker onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)} />
+                      </div>
+                    </div>
+                    <Button 
+                      variant="hero" 
+                      size="icon" 
+                      onClick={handleSendMessage}
+                      disabled={!message.trim()}
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-              {user && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleRenameGroup}>
-                      Rename group
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLeaveGroup}>
-                      Leave group
-                    </DropdownMenuItem>
-                    {/* Only show delete for creator/admin */}
-                    {groupMembers.some(
-                      (m) =>
-                        m.user_id === user.id &&
-                        (m.role === "admin" || selectedGroup.created_by === user.id)
-                    ) && (
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={handleDeleteGroup}
-                      >
-                        Delete group
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </header>
-
-            {/* Group Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {groupMessages.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center h-full">
-                  <p className="text-muted-foreground text-sm">No messages yet. Say hello to the group!</p>
-                </div>
-              ) : (
-                groupMessages.map((msg) => (
-                  <GroupChatMessage
-                    key={msg.id}
-                    id={msg.id}
-                    content={msg.content}
-                    mediaUrl={msg.media_url}
-                    mediaType={msg.media_type}
-                    isOwn={msg.sender_id === user?.id}
-                    time={msg.created_at}
-                    editedAt={msg.edited_at}
-                    sender={msg.sender}
-                    replyTo={getGroupReplyToMessage(msg.reply_to_id)}
-                    onDelete={deleteGroupMessage}
-                    onEdit={editGroupMessage}
-                    onReply={handleGroupReply}
-                    canDelete={msg.sender_id === user?.id || isAdmin}
-                    canEdit={msg.sender_id === user?.id}
-                  />
-                ))
-              )}
-              <div ref={messagesEndRef} />
             </div>
 
-            {/* Group Reply Preview */}
-            {groupReplyTo && (
-              <ReplyPreview
-                replyToMessage={groupReplyTo}
-                onCancelReply={() => setGroupReplyTo(null)}
+            {/* Group Members Panel */}
+            {showGroupMembers && (
+              <GroupMembersPanel
+                groupId={selectedGroup.id}
+                groupCreatedBy={selectedGroup.created_by}
+                members={groupMembers}
+                onClose={() => setShowGroupMembers(false)}
+                onMembersChanged={refreshGroupMembers}
               />
             )}
-
-            {/* Group Message Input */}
-            <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <MediaUpload 
-                    onUpload={sendGroupMediaMessage}
-                    disabled={!selectedGroupId}
-                  />
-                </div>
-                <div className="flex-1 flex items-center gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Type a message..."
-                      className="pr-10 bg-secondary border-border focus:border-primary"
-                    />
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                      <EmojiPicker onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)} />
-                    </div>
-                  </div>
-                  <Button 
-                    variant="hero" 
-                    size="icon" 
-                    onClick={handleSendMessage}
-                    disabled={!message.trim()}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </>
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -887,16 +843,6 @@ const Chat = () => {
       <CreateGroupModal
         open={showCreateGroup}
         onOpenChange={setShowCreateGroup}
-        onCreateGroup={async (name, memberIds) => {
-          const group = await createGroup(name, memberIds);
-          // Ensure sidebar updates even if Realtime isn't enabled
-          await refreshGroups();
-          if (group?.id) {
-            setSidebarTab("groups");
-            handleSelectGroup(group.id);
-          }
-          return group;
-        }}
       />
     </div>
   );

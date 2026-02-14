@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface LockerIntroProps {
   onEnter: () => void;
+  redirectTo?: string;
 }
 
 const LockerIntro = ({ onEnter }: LockerIntroProps) => {
@@ -134,28 +135,112 @@ const LockerIntro = ({ onEnter }: LockerIntroProps) => {
               delay: 0.8
             }}
           >
-            {/* Vault frame/interior - Orange interior */}
+            {/* 3D Vault interior - looks like an empty box going inward */}
             <div 
               className="relative w-64 h-72 md:w-80 md:h-96"
-              style={{ transformStyle: "preserve-3d" }}
+              style={{ transformStyle: "preserve-3d", perspective: 800 }}
             >
-              {/* Orange interior visible as door opens */}
+              {/* Back wall of the vault */}
               <motion.div
-                className="absolute inset-0 rounded-3xl bg-gradient-to-br from-orange-600 via-orange-700 to-orange-800"
+                className="absolute inset-4 rounded-xl"
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 0.75 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                style={{
+                  background: "linear-gradient(145deg, #7c2d12 0%, #9a3412 30%, #7c2d12 100%)",
+                  boxShadow: "inset 0 0 40px rgba(0,0,0,0.6)",
+                  transform: "translateZ(-80px) scale(0.75)",
+                }}
+              />
+
+              {/* Top inner wall - trapezoid effect */}
+              <motion.div
+                className="absolute top-0 left-0 right-0 h-16 overflow-hidden rounded-t-3xl"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4 }}
-              />
-              
-              {/* Light rays from inside */}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "linear-gradient(180deg, #c2410c 0%, #9a3412 100%)",
+                    clipPath: "polygon(0 0, 100% 0, 85% 100%, 15% 100%)",
+                  }}
+                />
+              </motion.div>
+
+              {/* Bottom inner wall */}
+              <motion.div
+                className="absolute bottom-0 left-0 right-0 h-16 overflow-hidden rounded-b-3xl"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "linear-gradient(0deg, #7c2d12 0%, #9a3412 100%)",
+                    clipPath: "polygon(15% 0, 85% 0, 100% 100%, 0 100%)",
+                  }}
+                />
+              </motion.div>
+
+              {/* Left inner wall */}
+              <motion.div
+                className="absolute top-0 left-0 bottom-0 w-16 overflow-hidden rounded-l-3xl"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "linear-gradient(90deg, #b45309 0%, #92400e 100%)",
+                    clipPath: "polygon(0 0, 100% 15%, 100% 85%, 0 100%)",
+                  }}
+                />
+              </motion.div>
+
+              {/* Right inner wall */}
+              <motion.div
+                className="absolute top-0 right-0 bottom-0 w-16 overflow-hidden rounded-r-3xl"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "linear-gradient(-90deg, #92400e 0%, #78350f 100%)",
+                    clipPath: "polygon(0 15%, 100% 0, 100% 100%, 0 85%)",
+                  }}
+                />
+              </motion.div>
+
+              {/* Ambient light glow from inside */}
               <motion.div
                 className="absolute inset-0 rounded-3xl overflow-hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
+                transition={{ duration: 0.8, delay: 0.5 }}
               >
-                <div className="absolute inset-0 bg-gradient-radial from-orange-300/50 via-orange-500/20 to-transparent" />
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    background: "radial-gradient(ellipse at center, rgba(251,191,36,0.3) 0%, rgba(234,88,12,0.15) 40%, transparent 70%)",
+                  }}
+                />
               </motion.div>
+
+              {/* Vault border/frame ring */}
+              <div 
+                className="absolute inset-0 rounded-3xl border-4 border-orange-800/60"
+                style={{ boxShadow: "inset 0 0 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,88,12,0.3)" }}
+              />
               
               {/* Single vault door swinging open to the left */}
               <motion.div
