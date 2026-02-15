@@ -22,6 +22,7 @@ import { useLastSeen } from "@/hooks/use-last-seen";
 import { useMessageReactions } from "@/hooks/use-message-reactions";
 import { useReadReceipts } from "@/hooks/use-read-receipts";
 import { useUnreadCount } from "@/hooks/use-unread-count";
+import { useFirebaseNotifications } from "@/hooks/use-firebase-notifications";
 import { useGroupChats, useGroupMessages, useGroupMembers } from "@/hooks/use-group-chats";
 import FriendsManager from "@/components/FriendsManager";
 import ChatMessage from "@/components/ChatMessage";
@@ -96,7 +97,10 @@ const Chat = () => {
   useReadReceipts(messages, selectedFriendId);
   
   // Unread count for browser title
-  useUnreadCount();
+  const { unreadCount, unreadByFriend } = useUnreadCount();
+
+  // Firebase push notifications
+  const { initializeFirebase, isInitialized: firebaseInitialized } = useFirebaseNotifications();
 
   // Group chat hooks
   const { groups } = useGroupChats();
@@ -108,6 +112,13 @@ const Chat = () => {
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
   const selectedGroup = groups.find(g => g.id === selectedGroupId);
+
+  // Initialize Firebase for push notifications
+  useEffect(() => {
+    if (user && !firebaseInitialized) {
+      initializeFirebase();
+    }
+  }, [user, firebaseInitialized, initializeFirebase]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -286,7 +297,7 @@ const Chat = () => {
               <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold gradient-text">R-Vault</span>
+              <span className="font-bold gradient-text">SecureHub</span>
             </Link>
             <div className="flex items-center gap-1">
               <Button 
@@ -450,6 +461,11 @@ const Chat = () => {
                         @{friend.username}
                       </p>
                     </div>
+                    {unreadByFriend[friend.id] > 0 && (
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center">
+                        {unreadByFriend[friend.id]}
+                      </span>
+                    )}
                   </button>
                 ))
               )}
@@ -774,7 +790,7 @@ const Chat = () => {
               <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to R-Vault</h2>
+              <h2 className="text-xl font-semibold mb-2">Welcome to SecureHub</h2>
               <p className="text-muted-foreground mb-4">Select a conversation to start chatting</p>
               {isAdmin && (
                 <p className="text-xs text-primary flex items-center justify-center gap-1 mb-4">
