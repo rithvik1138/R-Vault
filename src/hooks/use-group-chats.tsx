@@ -391,9 +391,10 @@ export const useGroupMessages = (groupId: string | null) => {
     const { error } = await supabase.from("group_messages").insert(insertData);
 
     if (error) {
+      console.error("Send group message error:", error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: error.message || "Failed to send message",
         variant: "destructive",
       });
     }

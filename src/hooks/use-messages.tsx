@@ -112,22 +112,20 @@ export const useMessages = (friendId: string | null) => {
   const sendMessage = async (content: string, replyToId?: string | null) => {
     if (!user || !friendId || !content.trim()) return;
 
-    const insertData: Record<string, unknown> = {
+    const insertData = {
       sender_id: user.id,
       receiver_id: friendId,
       content: content.trim(),
+      ...(replyToId ? { reply_to_id: replyToId } : {}),
     };
 
-    if (replyToId) {
-      insertData.reply_to_id = replyToId;
-    }
-
-    const { error } = await supabase.from("messages").insert(insertData as never);
+    const { error } = await supabase.from("messages").insert(insertData);
 
     if (error) {
+      console.error("Send message error:", error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: error.message || "Failed to send message",
         variant: "destructive",
       });
     }
