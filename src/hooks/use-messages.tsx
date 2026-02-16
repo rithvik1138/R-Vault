@@ -112,11 +112,15 @@ export const useMessages = (friendId: string | null) => {
   const sendMessage = async (content: string, replyToId?: string | null) => {
     if (!user || !friendId || !content.trim()) return;
 
-    const insertData = {
+    // Only send columns that exist in the messages table (avoids 400 if reply_to_id/edited_at not migrated yet)
+    const insertData: {
+      sender_id: string;
+      receiver_id: string;
+      content: string;
+    } = {
       sender_id: user.id,
       receiver_id: friendId,
       content: content.trim(),
-      ...(replyToId ? { reply_to_id: replyToId } : {}),
     };
 
     const { error } = await supabase.from("messages").insert(insertData);
