@@ -35,7 +35,7 @@ export const useTypingIndicator = (friendId: string | null) => {
 
     channel
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
+        const state = channel.presenceState() ?? {};
         // Check if friend is in the typing state
         const friendPresence = state[friendId];
         if (friendPresence && Array.isArray(friendPresence)) {

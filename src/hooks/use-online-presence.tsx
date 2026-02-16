@@ -28,7 +28,7 @@ export const useOnlinePresence = (friendIds: string[]) => {
 
     channel
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
+        const state = channel.presenceState() ?? {};
         const online = new Set<string>();
         
         Object.keys(state).forEach((userId) => {
