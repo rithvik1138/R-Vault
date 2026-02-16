@@ -7,10 +7,17 @@ import LockerIntro from "@/components/LockerIntro";
 import { useAuth } from "@/hooks/use-auth";
 
 const Index = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [showIntro, setShowIntro] = useState(true);
   const [hasEntered, setHasEntered] = useState(false);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to chat after we know they're logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/chat", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   useEffect(() => {
     // Check if user has already seen the intro this session
@@ -21,18 +28,29 @@ const Index = () => {
     }
   }, []);
 
-  // If already logged in, go straight to chat
-  useEffect(() => {
-    if (user) {
-      navigate("/chat");
-    }
-  }, [user, navigate]);
-
   const handleEnter = () => {
     sessionStorage.setItem("r-vault-intro-seen", "true");
     setShowIntro(false);
     setHasEntered(true);
   };
+
+  // Show loading animation while checking auth (so we don't flash landing then redirect)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // If logged in, we're about to redirect to /chat (effect above); show same spinner briefly
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>

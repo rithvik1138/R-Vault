@@ -461,9 +461,9 @@ const Chat = () => {
                         @{friend.username}
                       </p>
                     </div>
-                    {unreadByFriend[friend.id] > 0 && (
+                    {(unreadByFriend ?? {})[friend.id] > 0 && (
                       <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center">
-                        {unreadByFriend[friend.id]}
+                        {(unreadByFriend ?? {})[friend.id]}
                       </span>
                     )}
                   </button>
