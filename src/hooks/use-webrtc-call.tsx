@@ -75,6 +75,43 @@ export const useWebRTCCall = () => {
     };
   }, [callState]);
 
+  // Listen for call status updates (when other person ends call)
+  useEffect(() => {
+    if (!user || !currentCall) return;
+
+    const channel = supabase
+      .channel(`call-status-${currentCall.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "calls",
+          filter: `id=eq.${currentCall.id}`,
+        },
+        (payload) => {
+          const updatedCall = payload.new as CallData;
+          console.log("Call status updated:", updatedCall);
+
+          // If call was ended by the other person, cleanup
+          if (updatedCall.status === "ended" || updatedCall.status === "declined" || updatedCall.status === "missed") {
+            if (callStateRef.current !== "idle") {
+              toast({
+                title: "Call ended",
+                description: "The other person ended the call",
+              });
+              cleanup();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, currentCall, toast]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

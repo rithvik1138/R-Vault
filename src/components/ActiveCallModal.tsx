@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { 
   PhoneOff, Video, VideoOff, Mic, MicOff, 
@@ -45,6 +47,7 @@ const ActiveCallModal = ({
 }: ActiveCallModalProps) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
   // Attach local stream
   useEffect(() => {
@@ -53,10 +56,34 @@ const ActiveCallModal = ({
     }
   }, [localStream]);
 
-  // Attach remote stream
+  // Attach remote stream to both video and audio elements
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
+    if (remoteStream) {
+      console.log("Attaching remote stream to video/audio elements", remoteStream);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        // Ensure video plays
+        remoteVideoRef.current.play().catch(err => {
+          console.error("Error playing remote video:", err);
+        });
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream;
+        // Set volume to maximum
+        remoteAudioRef.current.volume = 1;
+        // Ensure audio plays (critical for audio calls)
+        remoteAudioRef.current.play().catch(err => {
+          console.error("Error playing remote audio:", err);
+        });
+      }
+    } else {
+      // Clear streams when remote stream is null
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = null;
+      }
     }
   }, [remoteStream]);
 
@@ -83,6 +110,9 @@ const ActiveCallModal = ({
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleEndCall()}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-background">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{isVideoCall ? 'Video' : 'Audio'} Call with {friendName}</DialogTitle>
+        </DialogHeader>
         <div className="relative min-h-[400px] flex flex-col">
           {/* Close button */}
           <Button
@@ -103,8 +133,16 @@ const ActiveCallModal = ({
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  muted={false}
                   className="w-full h-full object-cover"
+                  onLoadedMetadata={() => {
+                    console.log("Remote video metadata loaded");
+                    remoteVideoRef.current?.play().catch(err => {
+                      console.error("Error auto-playing remote video:", err);
+                    });
+                  }}
                 />
+                {/* Hidden audio element for remote stream in audio-only calls */}
                 {/* Local video preview */}
                 <div className="absolute bottom-4 right-4 w-32 h-24 rounded-lg overflow-hidden border-2 border-border shadow-lg">
                   <video
@@ -165,6 +203,14 @@ const ActiveCallModal = ({
             )}
           </div>
 
+          {/* Audio element for remote stream (critical for audio calls and video call audio) */}
+          <audio 
+            ref={remoteAudioRef} 
+            autoPlay 
+            playsInline 
+            style={{ display: 'none' }}
+          />
+
           {/* Controls */}
           <div className="p-6 bg-card border-t border-border">
             <div className="flex items-center justify-center gap-4">
@@ -216,4 +262,3 @@ const ActiveCallModal = ({
 };
 
 export default ActiveCallModal;
-
