@@ -218,12 +218,15 @@ export const useWebRTCCall = () => {
         const newStream = new MediaStream([event.track]);
         console.log("Created new stream from track:", event.track.kind);
         setRemoteStream((prevStream) => {
-          if (prevStream) {
-            // Add track to existing stream
-            event.track && prevStream.addTrack(event.track);
-            return prevStream;
+          if (!prevStream) return newStream;
+
+          const existingTracks = prevStream.getTracks();
+          const nextStream = new MediaStream(existingTracks);
+          const alreadyHasTrack = existingTracks.some((t) => t.id === event.track.id);
+          if (!alreadyHasTrack) {
+            nextStream.addTrack(event.track);
           }
-          return newStream;
+          return nextStream;
         });
       }
     };

@@ -18,6 +18,22 @@ const PROJECT_ID = serviceAccount.project_id;
    Firebase access token
 ============================ */
 
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  // Accept either a raw PEM string or a JSON-escaped PEM containing "\n"
+  const normalized = pem.replace(/\\n/g, "\n");
+  const base64 = normalized
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 async function getAccessToken() {
   const now = Math.floor(Date.now() / 1000);
 
@@ -40,12 +56,7 @@ async function getAccessToken() {
 
   const key = await crypto.subtle.importKey(
     "pkcs8",
-    new TextEncoder().encode(
-      serviceAccount.private_key
-        .replace(/\\n/g, "\n")
-        .replace("-----BEGIN PRIVATE KEY-----", "")
-        .replace("-----END PRIVATE KEY-----", "")
-    ),
+    pemToArrayBuffer(serviceAccount.private_key),
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["sign"]
