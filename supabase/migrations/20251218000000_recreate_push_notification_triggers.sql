@@ -75,6 +75,10 @@ BEGIN
 END;
 $$;
 
+-- Drop existing triggers if they exist (to avoid conflicts)
+DROP TRIGGER IF EXISTS on_new_message_push_notification ON public.messages;
+DROP TRIGGER IF EXISTS on_new_group_message_push_notification ON public.group_messages;
+
 -- Create triggers
 CREATE TRIGGER on_new_message_push_notification
   AFTER INSERT ON public.messages
