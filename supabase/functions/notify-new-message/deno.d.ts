@@ -32,10 +32,12 @@ declare module "https://esm.sh/@supabase/supabase-js@*" {
     };
   }
 
+  export type SupabaseClient = unknown;
+
   export function createClient(
     url: string,
     key: string,
     options?: SupabaseClientOptions
-  ): any;
+  ): SupabaseClient;
 }
 

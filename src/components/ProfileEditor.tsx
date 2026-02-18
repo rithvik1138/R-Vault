@@ -93,10 +93,10 @@ const ProfileEditor = ({ open, onOpenChange }: ProfileEditorProps) => {
         title: "Avatar uploaded!",
         description: "Don't forget to save your profile.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Upload failed",
         variant: "destructive",
       });
     } finally {
@@ -130,10 +130,10 @@ const ProfileEditor = ({ open, onOpenChange }: ProfileEditorProps) => {
       
       // Refresh profile data without page reload
       await refreshProfile();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Failed to save",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to save",
         variant: "destructive",
       });
     } finally {

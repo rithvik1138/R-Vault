@@ -49,6 +49,8 @@ export const useWebRTCCall = () => {
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const signalChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const callStateRef = useRef<CallState>("idle");
+  const currentCallRef = useRef<CallData | null>(null);
 
   // Duration timer
   useEffect(() => {
@@ -80,11 +82,29 @@ export const useWebRTCCall = () => {
     };
   }, []);
 
+  const localStreamRef = useRef<MediaStream | null>(null);
+
+  // Keep localStreamRef in sync
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
+  // Keep callState and currentCall refs in sync
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
+
+  useEffect(() => {
+    currentCallRef.current = currentCall;
+  }, [currentCall]);
+
   const cleanup = useCallback(() => {
     console.log("Cleaning up call resources");
     
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    // Use ref to avoid stale closure
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
       setLocalStream(null);
     }
     
@@ -102,7 +122,7 @@ export const useWebRTCCall = () => {
     setRemoteStream(null);
     setCallState("idle");
     setCurrentCall(null);
-  }, [localStream]);
+  }, []);
 
   const getMediaStream = async (isVideo: boolean): Promise<MediaStream> => {
     const constraints: MediaStreamConstraints = {
@@ -277,7 +297,7 @@ export const useWebRTCCall = () => {
 
       // Timeout if no answer in 30 seconds
       setTimeout(async () => {
-        if (callState === "ringing" && currentCall?.id === call.id) {
+        if (callStateRef.current === "ringing" && currentCallRef.current?.id === call.id) {
           await supabase
             .from("calls")
             .update({ status: "missed", ended_at: new Date().toISOString() })
@@ -291,11 +311,11 @@ export const useWebRTCCall = () => {
         }
       }, 30000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to start call:", error);
       toast({
         title: "Call failed",
-        description: error.message || "Could not start the call",
+        description: error instanceof Error ? error.message : "Could not start the call",
         variant: "destructive",
       });
       cleanup();
@@ -377,11 +397,11 @@ export const useWebRTCCall = () => {
         .update({ status: "accepted", started_at: new Date().toISOString() })
         .eq("id", call.id);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to answer call:", error);
       toast({
         title: "Call failed",
-        description: error.message || "Could not answer the call",
+        description: error instanceof Error ? error.message : "Could not answer the call",
         variant: "destructive",
       });
       cleanup();

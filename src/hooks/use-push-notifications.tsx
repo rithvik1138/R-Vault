@@ -33,7 +33,7 @@ export const usePushNotifications = () => {
   const checkSubscription = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      const mgr = (registration as any).pushManager;
+      const mgr = registration.pushManager;
       if (mgr) {
         const subscription = await mgr.getSubscription();
         setIsSubscribed(!!subscription);
@@ -94,7 +94,7 @@ export const usePushNotifications = () => {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await (registration as any).pushManager?.getSubscription();
+      const subscription = await registration.pushManager.getSubscription();
       
       if (subscription) {
         await subscription.unsubscribe();

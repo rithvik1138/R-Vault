@@ -106,10 +106,10 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
         title: "Avatar uploaded!",
         description: "Don't forget to save your profile.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Upload failed",
         variant: "destructive",
       });
     } finally {
@@ -140,10 +140,10 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
       });
 
       await refreshProfile();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Failed to save",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to save",
         variant: "destructive",
       });
     } finally {
@@ -187,10 +187,10 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Failed to change password",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to change password",
         variant: "destructive",
       });
     } finally {

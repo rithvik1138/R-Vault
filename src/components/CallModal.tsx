@@ -91,11 +91,12 @@ const CallModal = ({ open, onOpenChange, friendName, friendAvatar, isVideoCall }
         }
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to start call:", error);
       toast({
         title: "Call failed",
-        description: error.message || "Could not access camera/microphone",
+        description:
+          error instanceof Error ? error.message : "Could not access camera/microphone",
         variant: "destructive",
       });
       onOpenChange(false);
