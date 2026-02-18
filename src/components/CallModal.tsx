@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { 
   Phone, PhoneOff, Video, VideoOff, Mic, MicOff, 
@@ -93,11 +95,30 @@ const CallModal = ({ open, onOpenChange, friendName, friendAvatar, isVideoCall }
 
     } catch (error: unknown) {
       console.error("Failed to start call:", error);
+      let errorMessage = "Could not access camera/microphone";
+      
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          const deviceType = isVideoCall ? 'camera and microphone' : 'microphone';
+          errorMessage = `Permission denied: Please allow ${deviceType} access in your browser settings. Click the lock icon in your address bar and enable permissions, then try again.`;
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = isVideoCall 
+            ? 'No camera found. Please connect a camera and try again.'
+            : 'No microphone found. Please connect a microphone and try again.';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = 'Device is already in use. Please close other apps using your camera/microphone.';
+        } else {
+          errorMessage = error.message || errorMessage;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Call failed",
-        description:
-          error instanceof Error ? error.message : "Could not access camera/microphone",
+        description: errorMessage,
         variant: "destructive",
+        duration: 8000, // Show longer for permission errors
       });
       onOpenChange(false);
     }
@@ -161,6 +182,9 @@ const CallModal = ({ open, onOpenChange, friendName, friendAvatar, isVideoCall }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-background">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{isVideoCall ? 'Video' : 'Audio'} Call with {friendName}</DialogTitle>
+        </DialogHeader>
         <div className="relative min-h-[400px] flex flex-col">
           {/* Close button */}
           <Button

@@ -33,9 +33,9 @@ export const usePushNotifications = () => {
   const checkSubscription = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      const mgr = registration.pushManager;
-      if (mgr) {
-        const subscription = await mgr.getSubscription();
+      // Check if pushManager exists (some service workers don't support it)
+      if (registration && 'pushManager' in registration && registration.pushManager) {
+        const subscription = await registration.pushManager.getSubscription();
         setIsSubscribed(!!subscription);
       }
     } catch (error) {
@@ -94,17 +94,20 @@ export const usePushNotifications = () => {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
-        await subscription.unsubscribe();
+      // Check if pushManager exists before accessing it
+      if (registration && 'pushManager' in registration && registration.pushManager) {
+        const subscription = await registration.pushManager.getSubscription();
         
-        // Remove from database
-        await supabase
-          .from("push_subscriptions")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("endpoint", subscription.endpoint);
+        if (subscription) {
+          await subscription.unsubscribe();
+          
+          // Remove from database
+          await supabase
+            .from("push_subscriptions")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("endpoint", subscription.endpoint);
+        }
       }
       
       setIsSubscribed(false);

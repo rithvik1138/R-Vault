@@ -138,7 +138,22 @@ export const useWebRTCCall = () => {
       } : false,
     };
 
-    return navigator.mediaDevices.getUserMedia(constraints);
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (error: unknown) {
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          const deviceType = isVideo ? 'camera and microphone' : 'microphone';
+          throw new Error(`Permission denied: Please allow ${deviceType} access in your browser settings and try again.`);
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          const deviceType = isVideo ? 'camera' : 'microphone';
+          throw new Error(`No ${deviceType} found. Please connect a ${deviceType} and try again.`);
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+          throw new Error('Device is already in use by another application. Please close other apps using your camera/microphone.');
+        }
+      }
+      throw error;
+    }
   };
 
   const createPeerConnection = (callId: string): RTCPeerConnection => {
