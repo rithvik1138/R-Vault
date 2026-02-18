@@ -209,9 +209,22 @@ export const useWebRTCCall = () => {
     };
 
     pc.ontrack = (event) => {
-      console.log("Received remote track", event.streams);
-      if (event.streams[0]) {
+      console.log("Received remote track", event.track.kind, event.streams);
+      if (event.streams && event.streams.length > 0) {
+        console.log("Setting remote stream with tracks:", event.streams[0].getTracks().map(t => t.kind));
         setRemoteStream(event.streams[0]);
+      } else if (event.track) {
+        // Fallback: create a new stream from the track
+        const newStream = new MediaStream([event.track]);
+        console.log("Created new stream from track:", event.track.kind);
+        setRemoteStream((prevStream) => {
+          if (prevStream) {
+            // Add track to existing stream
+            event.track && prevStream.addTrack(event.track);
+            return prevStream;
+          }
+          return newStream;
+        });
       }
     };
 
@@ -328,15 +341,20 @@ export const useWebRTCCall = () => {
 
       // Add local tracks
       stream.getTracks().forEach((track) => {
+        console.log("Adding local track:", track.kind, track.enabled);
         pc.addTrack(track, stream);
       });
 
       // Subscribe to signals
       subscribeToSignals(call.id);
 
-      // Create and send offer
-      const offer = await pc.createOffer();
+      // Create and send offer (tracks must be added before this)
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: isVideo,
+      });
       await pc.setLocalDescription(offer);
+      console.log("Created offer with tracks:", stream.getTracks().map(t => `${t.kind}:${t.enabled}`));
 
       await supabase.from("call_signals").insert({
         call_id: call.id,
@@ -382,7 +400,7 @@ export const useWebRTCCall = () => {
       setCallState("connecting");
       setCurrentCall(call);
 
-      // Get local media
+      // Get local media FIRST
       const stream = await getMediaStream(call.call_type === "video");
       setLocalStream(stream);
       setIsVideoEnabled(call.call_type === "video");
@@ -391,8 +409,9 @@ export const useWebRTCCall = () => {
       const pc = createPeerConnection(call.id);
       peerConnectionRef.current = pc;
 
-      // Add local tracks
+      // Add local tracks BEFORE setting remote description
       stream.getTracks().forEach((track) => {
+        console.log("Adding local track:", track.kind, track.enabled);
         pc.addTrack(track, stream);
       });
 
@@ -410,6 +429,7 @@ export const useWebRTCCall = () => {
 
       if (signals && signals[0]) {
         const offer = signals[0].signal_data as unknown as RTCSessionDescriptionInit;
+        // Set remote description AFTER tracks are added
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
         // Fetch any ICE candidates that arrived before we joined
@@ -431,9 +451,13 @@ export const useWebRTCCall = () => {
           }
         }
 
-        // Create and send answer
-        const answer = await pc.createAnswer();
+        // Create and send answer (tracks are already added)
+        const answer = await pc.createAnswer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: call.call_type === "video",
+        });
         await pc.setLocalDescription(answer);
+        console.log("Created answer with tracks:", stream.getTracks().map(t => `${t.kind}:${t.enabled}`));
 
         await supabase.from("call_signals").insert({
           call_id: call.id,

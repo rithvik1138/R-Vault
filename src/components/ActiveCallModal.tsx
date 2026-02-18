@@ -136,9 +136,15 @@ const ActiveCallModal = ({
                   muted={false}
                   className="w-full h-full object-cover"
                   onLoadedMetadata={() => {
-                    console.log("Remote video metadata loaded");
+                    console.log("Remote video metadata loaded, tracks:", remoteStream.getTracks().map(t => `${t.kind}:${t.enabled}`));
                     remoteVideoRef.current?.play().catch(err => {
                       console.error("Error auto-playing remote video:", err);
+                    });
+                  }}
+                  onCanPlay={() => {
+                    console.log("Remote video can play");
+                    remoteVideoRef.current?.play().catch(err => {
+                      console.error("Error playing remote video on canPlay:", err);
                     });
                   }}
                 />
