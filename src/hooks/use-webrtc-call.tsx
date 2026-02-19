@@ -162,6 +162,7 @@ export const useWebRTCCall = () => {
   }, []);
 
   const getMediaStream = async (isVideo: boolean): Promise<MediaStream> => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const constraints: MediaStreamConstraints = {
       audio: {
         echoCancellation: true,
@@ -169,8 +170,8 @@ export const useWebRTCCall = () => {
         autoGainControl: true,
       },
       video: isVideo ? {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: isMobile ? { ideal: 640, max: 1280 } : { ideal: 1280 },
+        height: isMobile ? { ideal: 480, max: 720 } : { ideal: 720 },
         facingMode: "user",
       } : false,
     };

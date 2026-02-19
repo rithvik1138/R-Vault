@@ -73,10 +73,9 @@ export const useFirebaseNotifications = () => {
           : getApps()[0];
 
       // Register Firebase service worker
-      let registration: ServiceWorkerRegistration | undefined;
       if ("serviceWorker" in navigator) {
         try {
-          registration = await navigator.serviceWorker.getRegistration();
+          let registration = await navigator.serviceWorker.getRegistration();
 
           if (
             !registration ||
@@ -120,11 +119,19 @@ export const useFirebaseNotifications = () => {
         return false;
       }
 
-      const token = await getToken(messaging, {
-        vapidKey: FIREBASE_CONFIG.vapidKey,
-        // Explicitly bind to the Firebase SW registration if available
-        serviceWorkerRegistration: registration,
-      });
+      // getToken can fail on mobile if SW isn't controlling the page yet; retry once after a short delay
+      let token: string | null = null;
+      try {
+        token = await getToken(messaging, {
+          vapidKey: FIREBASE_CONFIG.vapidKey,
+        });
+      } catch (firstErr) {
+        console.warn("FCM getToken first attempt failed (common on mobile), retrying...", firstErr);
+        await new Promise((r) => setTimeout(r, 1500));
+        token = await getToken(messaging, {
+          vapidKey: FIREBASE_CONFIG.vapidKey,
+        }).catch(() => null);
+      }
 
       if (!token) return false;
 

@@ -128,27 +128,20 @@ const ActiveCallModal = ({
           <div className="flex-1 relative bg-secondary flex items-center justify-center min-h-[300px]">
             {isVideoCall && callState === "connected" && remoteStream ? (
               <>
-                {/* Remote video */}
+                {/* Remote video: muted so it can autoplay on mobile (iOS blocks video with sound). Audio plays from the hidden <audio> below. */}
                 <video
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
-                  muted={false}
+                  muted
                   className="w-full h-full object-cover"
                   onLoadedMetadata={() => {
-                    console.log("Remote video metadata loaded, tracks:", remoteStream.getTracks().map(t => `${t.kind}:${t.enabled}`));
-                    remoteVideoRef.current?.play().catch(err => {
-                      console.error("Error auto-playing remote video:", err);
-                    });
+                    remoteVideoRef.current?.play().catch(() => {});
                   }}
                   onCanPlay={() => {
-                    console.log("Remote video can play");
-                    remoteVideoRef.current?.play().catch(err => {
-                      console.error("Error playing remote video on canPlay:", err);
-                    });
+                    remoteVideoRef.current?.play().catch(() => {});
                   }}
                 />
-                {/* Hidden audio element for remote stream in audio-only calls */}
                 {/* Local video preview */}
                 <div className="absolute bottom-4 right-4 w-32 h-24 rounded-lg overflow-hidden border-2 border-border shadow-lg">
                   <video
