@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 
-// App icon badge (PWA) - shows unread count on the app icon
+// App icon badge (PWA) - shows unread count on the app icon for messages you received and haven't read
 function setAppBadgeCount(count: number) {
+  if (typeof window === "undefined" || !window.isSecureContext) return;
   const nav = navigator as Navigator & { setAppBadge?(count: number): Promise<void>; clearAppBadge?(): Promise<void> };
   if (count > 0 && typeof nav.setAppBadge === "function") {
     nav.setAppBadge(count).catch(() => {});
@@ -84,7 +85,14 @@ export const useUnreadCount = () => {
       )
       .subscribe();
 
+    // Refresh unread count and badge when user returns to the app (e.g. from another tab or desktop shortcut)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") fetchUnreadCount();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       supabase.removeChannel(channel);
       document.title = "R-Vault";
       setAppBadgeCount(0);
