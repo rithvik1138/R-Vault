@@ -36,7 +36,19 @@ const requestNotificationPermission = async (): Promise<boolean> => {
   return false;
 };
 
+const isFcmEnabled = () => {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem("rvault_fcm_enabled") === "true";
+  } catch {
+    return false;
+  }
+};
+
 const sendBrowserNotification = (title: string, body: string, icon?: string) => {
+  // Avoid double notifications on devices where FCM push is configured
+  if (isFcmEnabled()) return;
+
   if (Notification.permission === "granted") {
     const notification = new Notification(title, {
       body,

@@ -175,6 +175,12 @@ export const useFirebaseNotifications = () => {
 
     if (error) {
       console.error("Failed to save FCM token:", error);
+    } else if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("rvault_fcm_enabled", "true");
+      } catch {
+        // ignore storage errors
+      }
     }
   };
 
@@ -188,6 +194,13 @@ export const useFirebaseNotifications = () => {
       .eq("token", fcmToken);
 
     setFcmToken(null);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem("rvault_fcm_enabled");
+      } catch {
+        // ignore storage errors
+      }
+    }
   };
 
   /* ================================
