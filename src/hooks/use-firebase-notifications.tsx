@@ -146,16 +146,6 @@ export const useFirebaseNotifications = () => {
           title: payload.notification?.title || "New notification",
           description: payload.notification?.body,
         });
-
-        if (Notification.permission === "granted") {
-          new Notification(
-            payload.notification?.title || "New notification",
-            {
-              body: payload.notification?.body,
-              icon: "/favicon.png",
-            }
-          );
-        }
       });
 
       setIsInitialized(true);
