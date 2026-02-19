@@ -209,26 +209,18 @@ export const useWebRTCCall = () => {
     };
 
     pc.ontrack = (event) => {
-      console.log("Received remote track", event.track.kind, event.streams);
-      if (event.streams && event.streams.length > 0) {
-        console.log("Setting remote stream with tracks:", event.streams[0].getTracks().map(t => t.kind));
-        setRemoteStream(event.streams[0]);
-      } else if (event.track) {
-        // Fallback: create a new stream from the track
-        const newStream = new MediaStream([event.track]);
-        console.log("Created new stream from track:", event.track.kind);
-        setRemoteStream((prevStream) => {
-          if (!prevStream) return newStream;
-
-          const existingTracks = prevStream.getTracks();
-          const nextStream = new MediaStream(existingTracks);
-          const alreadyHasTrack = existingTracks.some((t) => t.id === event.track.id);
-          if (!alreadyHasTrack) {
-            nextStream.addTrack(event.track);
-          }
-          return nextStream;
-        });
-      }
+      const track = event.track;
+      console.log("Received remote track", track.kind, event.streams);
+      // Always merge tracks into one stream: audio and video can arrive in separate
+      // ontrack events; replacing with event.streams[0] would drop the other track.
+      setRemoteStream((prevStream) => {
+        const existingTracks = prevStream ? prevStream.getTracks() : [];
+        const alreadyHasTrack = existingTracks.some((t) => t.id === track.id);
+        if (alreadyHasTrack) return prevStream!;
+        const nextStream = prevStream ? new MediaStream([...existingTracks, track]) : new MediaStream([track]);
+        console.log("Remote stream tracks:", nextStream.getTracks().map((t) => t.kind));
+        return nextStream;
+      });
     };
 
     pc.onconnectionstatechange = () => {
@@ -512,11 +504,12 @@ export const useWebRTCCall = () => {
   };
 
   const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
     if (localStream) {
       localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !track.enabled;
+        track.enabled = !nextMuted;
       });
-      setIsMuted(!isMuted);
     }
   };
 

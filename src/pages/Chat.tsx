@@ -812,7 +812,8 @@ const Chat = () => {
       {/* Settings Dialog */}
       <SettingsDialog 
         open={showSettings} 
-        onOpenChange={setShowSettings} 
+        onOpenChange={setShowSettings}
+        onNotificationsEnabled={() => initializeFirebase()}
       />
 
       {/* Active Call Modal */}

@@ -23,9 +23,11 @@ import { useToast } from "@/hooks/use-toast";
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called when user turns notifications ON so we can init push (e.g. Firebase) and save token */
+  onNotificationsEnabled?: () => void;
 }
 
-const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
+const SettingsDialog = ({ open, onOpenChange, onNotificationsEnabled }: SettingsDialogProps) => {
   const { user, profile, refreshProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { settings: privacySettings, updateSetting } = usePrivacySettings();
@@ -450,7 +452,10 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
               </div>
               <Switch
                 checked={privacySettings.notificationsEnabled}
-                onCheckedChange={(checked) => updateSetting("notificationsEnabled", checked)}
+                onCheckedChange={(checked) => {
+                  updateSetting("notificationsEnabled", checked);
+                  if (checked && onNotificationsEnabled) onNotificationsEnabled();
+                }}
               />
             </div>
 

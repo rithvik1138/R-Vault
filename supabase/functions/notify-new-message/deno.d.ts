@@ -32,7 +32,15 @@ declare module "https://esm.sh/@supabase/supabase-js@*" {
     };
   }
 
-  export type SupabaseClient = unknown;
+  export interface PostgrestFilterBuilder<T = unknown> {
+    select(columns?: string): this;
+    eq(column: string, value: unknown): this;
+    then<TResult>(onfulfilled?: (value: { data: T[] | null; error: Error | null }) => TResult | PromiseLike<TResult>): Promise<TResult>;
+  }
+
+  export interface SupabaseClient {
+    from(table: string): PostgrestFilterBuilder;
+  }
 
   export function createClient(
     url: string,

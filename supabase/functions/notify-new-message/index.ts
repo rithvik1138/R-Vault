@@ -8,11 +8,7 @@ const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(supabaseUrl, serviceKey);
 
-const serviceAccount = JSON.parse(
-  Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!
-);
-
-const PROJECT_ID = serviceAccount.project_id;
+// FIREBASE_SERVICE_ACCOUNT is read inside the handler so we can return 200 when missing
 
 /* ============================
    Firebase access token
@@ -34,7 +30,7 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-async function getAccessToken() {
+async function getAccessToken(serviceAccount: { client_email: string; private_key: string }) {
   const now = Math.floor(Date.now() / 1000);
 
   const header = { alg: "RS256", typ: "JWT" };
@@ -93,52 +89,95 @@ async function getAccessToken() {
 ============================ */
 
 serve(async (req) => {
-  const { record } = await req.json();
+  try {
+    const body = await req.json().catch(() => ({}));
+    const record = body?.record ?? body;
+    if (!record) {
+      return new Response(JSON.stringify({ ok: false, error: "Missing record" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
 
-  const { sender_id, receiver_id, content } = record;
+    const { sender_id, receiver_id, content } = record;
 
-  // 1. Fetch receiver tokens
-  const { data: tokens } = await supabase
-    .from("fcm_tokens")
-    .select("token")
-    .eq("user_id", receiver_id);
+    // Group messages have no single receiver; skip FCM (or extend later to resolve members)
+    if (!receiver_id) {
+      return new Response(JSON.stringify({ ok: true, skipped: "group" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
 
-  if (!tokens || tokens.length === 0) {
-    return new Response("No tokens", { status: 200 });
-  }
+    const serviceAccountRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountRaw) {
+      console.error("FIREBASE_SERVICE_ACCOUNT not set");
+      return new Response(JSON.stringify({ ok: false, error: "Push not configured" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
 
-  const accessToken = await getAccessToken();
+    const serviceAccount = JSON.parse(serviceAccountRaw);
+    const projectId = serviceAccount.project_id;
 
-  // 2. Send push to each token
-  for (const t of tokens) {
-    await fetch(
-      `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: {
-            token: t.token,
-            // Use data field for background notifications (when app is closed)
-            // Firebase will show notification from data field when app is in background
-            data: {
-              title: "New message",
-              body: content || "You have a new message",
-              url: "/chat",
+    // 1. Fetch receiver FCM tokens
+    const { data: tokensData, error: tokensError } = await supabase
+      .from("fcm_tokens")
+      .select("token")
+      .eq("user_id", receiver_id);
+
+    if (tokensError) {
+      console.error("fcm_tokens error:", tokensError);
+      return new Response(JSON.stringify({ ok: false, error: String(tokensError) }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    const tokens: { token: string }[] = Array.isArray(tokensData) ? (tokensData as { token: string }[]) : [];
+    if (tokens.length === 0) {
+      return new Response(JSON.stringify({ ok: true, sent: 0 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    const accessToken = await getAccessToken(serviceAccount);
+    if (!accessToken) {
+      console.error("Failed to get Firebase access token");
+      return new Response(JSON.stringify({ ok: false, error: "Auth failed" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    const title = "New message";
+    const bodyText = (content && String(content).slice(0, 200)) || "You have a new message";
+
+    // 2. Send push to each token
+    for (const t of tokens) {
+      try {
+        const res = await fetch(
+          `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
             },
-            // Also include notification for foreground handling (optional)
-            notification: {
-              title: "New message",
-              body: content || "You have a new message",
-            },
-          },
-        }),
+            body: JSON.stringify({
+              message: {
+                token: t.token,
+                data: {
+                  title,
+                  body: bodyText,
+                  url: "/chat",
+                },
+                notification: {
+                  title,
+                  body: bodyText,
+                },
+              },
+            }),
+          }
+        );
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error("FCM send error:", res.status, errText);
+        }
+      } catch (e) {
+        console.error("FCM request error:", e);
       }
-    );
-  }
+    }
 
-  return new Response("OK", { status: 200 });
+    return new Response(JSON.stringify({ ok: true, sent: tokens.length }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("notify-new-message error:", e);
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
 });

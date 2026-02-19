@@ -2,6 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 
+// App icon badge (PWA) - shows unread count on the app icon
+function setAppBadgeCount(count: number) {
+  const nav = navigator as Navigator & { setAppBadge?(count: number): Promise<void>; clearAppBadge?(): Promise<void> };
+  if (count > 0 && typeof nav.setAppBadge === "function") {
+    nav.setAppBadge(count).catch(() => {});
+  } else if (count === 0 && typeof nav.clearAppBadge === "function") {
+    nav.clearAppBadge().catch(() => {});
+  }
+}
+
 export const useUnreadCount = () => {
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -20,6 +30,7 @@ export const useUnreadCount = () => {
     if (!error && count !== null) {
       setUnreadCount(count);
       document.title = count > 0 ? `(${count}) R-Vault` : "R-Vault";
+      setAppBadgeCount(count);
     }
 
     // Per-friend unread
@@ -43,6 +54,7 @@ export const useUnreadCount = () => {
       setUnreadCount(0);
       setUnreadByFriend({});
       document.title = "R-Vault";
+      setAppBadgeCount(0);
       return;
     }
 
@@ -75,6 +87,7 @@ export const useUnreadCount = () => {
     return () => {
       supabase.removeChannel(channel);
       document.title = "R-Vault";
+      setAppBadgeCount(0);
     };
   }, [user, fetchUnreadCount]);
 
