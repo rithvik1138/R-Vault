@@ -419,11 +419,24 @@ export const useGroupMessages = (groupId: string | null) => {
       return;
     }
 
-    const mediaType = file.type.startsWith("video/") ? "video" : "image";
+    const ext = (fileExt || "").toLowerCase();
+    const isPdf = file.type === "application/pdf" || ext === "pdf";
+    const isRar = ext === "rar";
+    const mediaType =
+      file.type.startsWith("video/")
+        ? "video"
+        : file.type.startsWith("image/")
+          ? "image"
+          : isPdf
+            ? "pdf"
+            : isRar
+              ? "rar"
+              : "file";
 
     const { error } = await supabase.from("group_messages").insert({
       group_id: groupId,
       sender_id: user.id,
+      content: file.name,
       media_url: fileName,
       media_type: mediaType,
     });

@@ -169,11 +169,24 @@ export const useMessages = (friendId: string | null) => {
       return;
     }
 
-    const mediaType = file.type.startsWith("video/") ? "video" : "image";
+    const ext = (fileExt || "").toLowerCase();
+    const isPdf = file.type === "application/pdf" || ext === "pdf";
+    const isRar = ext === "rar";
+    const mediaType =
+      file.type.startsWith("video/")
+        ? "video"
+        : file.type.startsWith("image/")
+          ? "image"
+          : isPdf
+            ? "pdf"
+            : isRar
+              ? "rar"
+              : "file";
 
     const { error } = await supabase.from("messages").insert({
       sender_id: user.id,
       receiver_id: friendId,
+      content: file.name,
       media_url: fileName,
       media_type: mediaType,
     });

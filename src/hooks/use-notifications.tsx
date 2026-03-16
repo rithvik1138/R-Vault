@@ -128,6 +128,12 @@ export const useNotifications = (currentChatFriendId: string | null, notificatio
             messagePreview = "📷 Sent you an image";
           } else if (newMessage.media_type === "video") {
             messagePreview = "🎥 Sent you a video";
+          } else if (newMessage.media_type === "pdf") {
+            messagePreview = "📄 Sent you a PDF";
+          } else if (newMessage.media_type === "rar") {
+            messagePreview = "🗜️ Sent you a RAR file";
+          } else if (newMessage.media_type) {
+            messagePreview = `📎 Sent you a file (${newMessage.media_type})`;
           }
 
           toast({
@@ -182,6 +188,12 @@ export const useNotifications = (currentChatFriendId: string | null, notificatio
             messagePreview = "📷 Sent an image";
           } else if (newMessage.media_type === "video") {
             messagePreview = "🎥 Sent a video";
+          } else if (newMessage.media_type === "pdf") {
+            messagePreview = "📄 Sent a PDF";
+          } else if (newMessage.media_type === "rar") {
+            messagePreview = "🗜️ Sent a RAR file";
+          } else if (newMessage.media_type) {
+            messagePreview = `📎 Sent a file (${newMessage.media_type})`;
           }
 
           toast({

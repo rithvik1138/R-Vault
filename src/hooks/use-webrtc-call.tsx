@@ -335,6 +335,16 @@ export const useWebRTCCall = () => {
       const pc = createPeerConnection(call.id);
       peerConnectionRef.current = pc;
 
+      // Ensure we negotiate receiving tracks reliably across browsers
+      if (isVideo) {
+        try {
+          pc.addTransceiver("video", { direction: "sendrecv" });
+        } catch {}
+      }
+      try {
+        pc.addTransceiver("audio", { direction: "sendrecv" });
+      } catch {}
+
       // Add local tracks
       stream.getTracks().forEach((track) => {
         console.log("Adding local track:", track.kind, track.enabled);
@@ -404,6 +414,16 @@ export const useWebRTCCall = () => {
       // Create peer connection
       const pc = createPeerConnection(call.id);
       peerConnectionRef.current = pc;
+
+      // Ensure we negotiate receiving tracks reliably across browsers
+      if (call.call_type === "video") {
+        try {
+          pc.addTransceiver("video", { direction: "sendrecv" });
+        } catch {}
+      }
+      try {
+        pc.addTransceiver("audio", { direction: "sendrecv" });
+      } catch {}
 
       // Add local tracks BEFORE setting remote description
       stream.getTracks().forEach((track) => {

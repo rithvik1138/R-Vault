@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Reply, Forward, Edit2, Check, X } from "lucide-react";
+import { Download, FileText, Trash2, Reply, Forward, Edit2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MessageReactions from "@/components/MessageReactions";
@@ -202,12 +202,35 @@ const ChatMessage = ({
                 >
                   <track kind="captions" />
                 </video>
-              ) : (
+              ) : mediaType === "image" ? (
                 <img
                   src={signedUrl || undefined}
                   alt="Shared media"
                   className="max-w-full max-h-64 rounded-lg object-cover"
                 />
+              ) : (
+                <a
+                  href={signedUrl || undefined}
+                  download
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`flex items-center gap-3 p-3 rounded-lg ${
+                    isOwn ? "bg-primary-foreground/10" : "bg-muted/50"
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-md bg-background/40 flex items-center justify-center">
+                    <FileText className="w-5 h-5 opacity-80" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">
+                      {content || "File"}
+                    </p>
+                    <p className="text-xs opacity-70">
+                      {mediaType?.toUpperCase() || "FILE"} • Tap to download
+                    </p>
+                  </div>
+                  <Download className="w-4 h-4 opacity-80" />
+                </a>
               )}
             </div>
           )}

@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Image, Video } from "lucide-react";
+import { FileText, Image, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,6 +11,7 @@ interface MediaUploadProps {
 const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,6 +33,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
     // Reset input
     if (imageInputRef.current) imageInputRef.current.value = "";
     if (videoInputRef.current) videoInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -48,6 +50,14 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         ref={videoInputRef}
         type="file"
         accept="video/*"
+        className="hidden"
+        onChange={handleFileChange}
+        disabled={disabled}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,application/pdf,.rar,application/vnd.rar,application/x-rar-compressed"
         className="hidden"
         onChange={handleFileChange}
         disabled={disabled}
@@ -71,6 +81,17 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         disabled={disabled}
       >
         <Video className="w-5 h-5" />
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-primary"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={disabled}
+        title="Send file (PDF/RAR)"
+      >
+        <FileText className="w-5 h-5" />
       </Button>
     </>
   );

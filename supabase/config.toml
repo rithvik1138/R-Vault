@@ -9,3 +9,9 @@ entrypoint = "./functions/notify-new-message/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/notify-new-message/*.html" ]
+
+[functions.notify-incoming-call]
+enabled = true
+verify_jwt = true
+import_map = "./functions/notify-incoming-call/deno.json"
+entrypoint = "./functions/notify-incoming-call/index.ts"
