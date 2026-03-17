@@ -14,30 +14,51 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFile = async (file: File | null) => {
     if (!file) return;
 
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Check file size (max 100MB)
+    if (file.size > 100 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Maximum file size is 10MB",
+        description: "Maximum file size is 100MB",
         variant: "destructive",
       });
       return;
     }
 
     await onUpload(file);
-    
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    await handleFile(file);
+
     // Reset input
     if (imageInputRef.current) imageInputRef.current.value = "";
     if (videoInputRef.current) videoInputRef.current.value = "";
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (disabled) return;
+    const file = e.dataTransfer.files?.[0] || null;
+    await handleFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
-    <>
+    <div
+      className="flex items-center gap-1"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
       <input
         ref={imageInputRef}
         type="file"
@@ -93,7 +114,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
       >
         <FileText className="w-5 h-5" />
       </Button>
-    </>
+    </div>
   );
 };
 
