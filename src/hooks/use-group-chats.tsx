@@ -276,6 +276,7 @@ export const useGroupMessages = (groupId: string | null) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
 
   const fetchMessages = useCallback(async () => {
     if (!groupId) {
@@ -403,50 +404,55 @@ export const useGroupMessages = (groupId: string | null) => {
   const sendMediaMessage = async (file: File) => {
     if (!user || !groupId) return;
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `groups/${groupId}/${user.id}/${Date.now()}.${fileExt}`;
+    setMediaUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `groups/${groupId}/${user.id}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("chat-media")
-      .upload(fileName, file);
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(fileName, file);
 
-    if (uploadError) {
-      toast({
-        title: "Error",
-        description: "Failed to upload media",
-        variant: "destructive",
+      if (uploadError) {
+        toast({
+          title: "Error",
+          description: "Failed to upload media",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const ext = (fileExt || "").toLowerCase();
+      const isPdf = file.type === "application/pdf" || ext === "pdf";
+      const isRar = ext === "rar";
+      const mediaType =
+        file.type.startsWith("video/")
+          ? "video"
+          : file.type.startsWith("image/")
+            ? "image"
+            : isPdf
+              ? "pdf"
+              : isRar
+                ? "rar"
+                : "file";
+
+      const { error } = await supabase.from("group_messages").insert({
+        group_id: groupId,
+        sender_id: user.id,
+        content: file.name,
+        media_url: fileName,
+        media_type: mediaType,
       });
-      return;
-    }
 
-    const ext = (fileExt || "").toLowerCase();
-    const isPdf = file.type === "application/pdf" || ext === "pdf";
-    const isRar = ext === "rar";
-    const mediaType =
-      file.type.startsWith("video/")
-        ? "video"
-        : file.type.startsWith("image/")
-          ? "image"
-          : isPdf
-            ? "pdf"
-            : isRar
-              ? "rar"
-              : "file";
-
-    const { error } = await supabase.from("group_messages").insert({
-      group_id: groupId,
-      sender_id: user.id,
-      content: file.name,
-      media_url: fileName,
-      media_type: mediaType,
-    });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send media message",
-        variant: "destructive",
-      });
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to send media message",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setMediaUploading(false);
     }
   };
 
@@ -486,6 +492,7 @@ export const useGroupMessages = (groupId: string | null) => {
   return {
     messages,
     loading,
+    mediaUploading,
     sendMessage,
     sendMediaMessage,
     editMessage,

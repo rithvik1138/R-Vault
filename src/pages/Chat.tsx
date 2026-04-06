@@ -73,7 +73,7 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
   const { friends } = useFriends();
-  const { messages, sendMessage, sendMediaMessage, deleteMessage, forwardMessage, editMessage } = useMessages(selectedFriendId);
+  const { messages, sendMessage, sendMediaMessage, mediaUploading, deleteMessage, forwardMessage, editMessage } = useMessages(selectedFriendId);
   const { isAdmin } = useAdmin();
   const { friendIsTyping, handleTyping, stopTyping } = useTypingIndicator(selectedFriendId);
   const { settings: privacySettings } = usePrivacySettings();
@@ -104,7 +104,7 @@ const Chat = () => {
 
   // Group chat hooks
   const { groups } = useGroupChats();
-  const { messages: groupMessages, sendMessage: sendGroupMessage, sendMediaMessage: sendGroupMediaMessage, editMessage: editGroupMessage, deleteMessage: deleteGroupMessage } = useGroupMessages(selectedGroupId);
+  const { messages: groupMessages, sendMessage: sendGroupMessage, sendMediaMessage: sendGroupMediaMessage, mediaUploading: groupMediaUploading, editMessage: editGroupMessage, deleteMessage: deleteGroupMessage } = useGroupMessages(selectedGroupId);
   const { members: groupMembers, refreshMembers: refreshGroupMembers } = useGroupMembers(selectedGroupId);
 
   // Enable in-app notifications for messages from other conversations
@@ -629,6 +629,7 @@ const Chat = () => {
                   <MediaUpload 
                     onUpload={sendMediaMessage}
                     disabled={!selectedFriendId}
+                    isUploading={mediaUploading}
                   />
                 </div>
                 
@@ -742,8 +743,9 @@ const Chat = () => {
               <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
-                    <MediaUpload 
+                    <MediaUpload
                       onUpload={sendGroupMediaMessage}
+                      isUploading={groupMediaUploading}
                       disabled={!selectedGroupId}
                     />
                   </div>

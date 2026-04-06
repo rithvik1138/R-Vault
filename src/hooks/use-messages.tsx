@@ -20,6 +20,7 @@ export const useMessages = (friendId: string | null) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
 
   const fetchMessages = useCallback(async () => {
     if (!user || !friendId) return;
@@ -138,65 +139,68 @@ export const useMessages = (friendId: string | null) => {
   const sendMediaMessage = async (file: File) => {
     if (!user || !friendId) return;
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${user.id}/${friendId}/${Date.now()}.${fileExt}`;
+    setMediaUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}/${friendId}/${Date.now()}.${fileExt}`;
 
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from("chat-media")
-      .upload(fileName, file);
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(fileName, file);
 
-    if (uploadError) {
-      toast({
-        title: "Error",
-        description: "Failed to upload media",
-        variant: "destructive",
+      if (uploadError) {
+        toast({
+          title: "Error",
+          description: "Failed to upload media",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: urlData } = await supabase.storage
+        .from("chat-media")
+        .createSignedUrl(fileName, 60 * 60 * 24 * 7);
+
+      if (!urlData?.signedUrl) {
+        toast({
+          title: "Error",
+          description: "Failed to get media URL",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const ext = (fileExt || "").toLowerCase();
+      const isPdf = file.type === "application/pdf" || ext === "pdf";
+      const isRar = ext === "rar";
+      const mediaType =
+        file.type.startsWith("video/")
+          ? "video"
+          : file.type.startsWith("image/")
+            ? "image"
+            : isPdf
+              ? "pdf"
+              : isRar
+                ? "rar"
+                : "file";
+
+      const { error } = await supabase.from("messages").insert({
+        sender_id: user.id,
+        receiver_id: friendId,
+        content: file.name,
+        media_url: fileName,
+        media_type: mediaType,
       });
-      return;
-    }
 
-    // Get signed URL for private bucket
-    const { data: urlData } = await supabase.storage
-      .from("chat-media")
-      .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
-
-    if (!urlData?.signedUrl) {
-      toast({
-        title: "Error",
-        description: "Failed to get media URL",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const ext = (fileExt || "").toLowerCase();
-    const isPdf = file.type === "application/pdf" || ext === "pdf";
-    const isRar = ext === "rar";
-    const mediaType =
-      file.type.startsWith("video/")
-        ? "video"
-        : file.type.startsWith("image/")
-          ? "image"
-          : isPdf
-            ? "pdf"
-            : isRar
-              ? "rar"
-              : "file";
-
-    const { error } = await supabase.from("messages").insert({
-      sender_id: user.id,
-      receiver_id: friendId,
-      content: file.name,
-      media_url: fileName,
-      media_type: mediaType,
-    });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send media",
-        variant: "destructive",
-      });
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to send media",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setMediaUploading(false);
     }
   };
 
@@ -286,6 +290,7 @@ export const useMessages = (friendId: string | null) => {
   return {
     messages,
     loading,
+    mediaUploading,
     sendMessage,
     sendMediaMessage,
     editMessage,

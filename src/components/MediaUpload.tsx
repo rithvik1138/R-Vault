@@ -1,21 +1,23 @@
 import { useRef } from "react";
-import { FileText, Image, Video } from "lucide-react";
+import { FileText, Image, Loader2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 interface MediaUploadProps {
   onUpload: (file: File) => Promise<void>;
   disabled?: boolean;
+  /** True while file is uploading / message is being sent */
+  isUploading?: boolean;
 }
 
-const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
+const MediaUpload = ({ onUpload, disabled = false, isUploading = false }: MediaUploadProps) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleFile = async (file: File | null) => {
-    if (!file) return;
+    if (!file || isUploading) return;
 
     // Check file size (max 100MB)
     if (file.size > 100 * 1024 * 1024) {
@@ -43,7 +45,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (disabled) return;
+    if (disabled || isUploading) return;
     const file = e.dataTransfer.files?.[0] || null;
     await handleFile(file);
   };
@@ -53,19 +55,27 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
     e.stopPropagation();
   };
 
+  const blocked = disabled || isUploading;
+
   return (
     <div
-      className="flex items-center gap-1"
+      className="relative flex items-center gap-1"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
+      {isUploading && (
+        <div className="absolute -inset-1 z-10 flex items-center justify-center gap-2 rounded-md border border-border bg-background/95 px-2 py-1 text-xs text-foreground shadow-sm">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+          <span className="whitespace-nowrap">Sending…</span>
+        </div>
+      )}
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
         className="hidden"
         onChange={handleFileChange}
-        disabled={disabled}
+        disabled={blocked}
       />
       <input
         ref={videoInputRef}
@@ -73,7 +83,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         accept="video/*"
         className="hidden"
         onChange={handleFileChange}
-        disabled={disabled}
+        disabled={blocked}
       />
       <input
         ref={fileInputRef}
@@ -81,7 +91,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         accept=".pdf,application/pdf,.rar,application/vnd.rar,application/x-rar-compressed"
         className="hidden"
         onChange={handleFileChange}
-        disabled={disabled}
+        disabled={blocked}
       />
       
       <Button
@@ -89,7 +99,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         size="icon"
         className="text-muted-foreground hover:text-primary"
         onClick={() => imageInputRef.current?.click()}
-        disabled={disabled}
+        disabled={blocked}
       >
         <Image className="w-5 h-5" />
       </Button>
@@ -99,7 +109,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         size="icon"
         className="text-muted-foreground hover:text-primary"
         onClick={() => videoInputRef.current?.click()}
-        disabled={disabled}
+        disabled={blocked}
       >
         <Video className="w-5 h-5" />
       </Button>
@@ -109,7 +119,7 @@ const MediaUpload = ({ onUpload, disabled = false }: MediaUploadProps) => {
         size="icon"
         className="text-muted-foreground hover:text-primary"
         onClick={() => fileInputRef.current?.click()}
-        disabled={disabled}
+        disabled={blocked}
         title="Send file (PDF/RAR)"
       >
         <FileText className="w-5 h-5" />

@@ -8,6 +8,11 @@ import { Shield, Lock, User, ArrowLeft, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
+/** If set, that email cannot use the public User → Sign Up flow (use admin setup or Dashboard). */
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined)?.trim().toLowerCase() || "";
+/** If set together with VITE_ADMIN_EMAIL, Admin tab can run a one-time password creation via signUp. */
+const ADMIN_SETUP_KEY = (import.meta.env.VITE_ADMIN_SETUP_KEY as string | undefined)?.trim() || "";
+
 const Auth = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const modeParam = searchParams.get("mode");
@@ -23,7 +28,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
-  const { user, signUp, signIn, signInWithPassword } = useAuth();
+  const { user, signUp, signIn } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -31,6 +36,8 @@ const Auth = () => {
     email: "",
     password: "",
   });
+  const [adminSetupKey, setAdminSetupKey] = useState("");
+  const [showAdminSetup, setShowAdminSetup] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -50,6 +57,18 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      ADMIN_EMAIL &&
+      formData.email.trim().toLowerCase() === ADMIN_EMAIL
+    ) {
+      toast({
+        title: "This email is reserved",
+        description:
+          "Use the Admin tab (first-time setup) or create the user in Supabase Dashboard → Authentication.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -99,12 +118,67 @@ const Auth = () => {
     }
   };
 
+  const handleAdminBootstrap = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ADMIN_EMAIL || !ADMIN_SETUP_KEY) return;
+    if (formData.email.trim().toLowerCase() !== ADMIN_EMAIL) {
+      toast({
+        title: "Wrong email",
+        description: "Use the configured admin email only.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (adminSetupKey !== ADMIN_SETUP_KEY) {
+      toast({
+        title: "Invalid setup key",
+        description: "The setup key does not match server configuration.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (formData.password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Use at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await signUp(
+        formData.email.trim(),
+        formData.password,
+        formData.email.split("@")[0] || "admin"
+      );
+      if (error) {
+        toast({
+          title: "Setup failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Admin account created",
+          description:
+            "If email confirmation is on, confirm the email in your inbox, then sign in below. You can remove VITE_ADMIN_SETUP_KEY after this.",
+        });
+        setShowAdminSetup(false);
+        setAdminSetupKey("");
+        setFormData((prev) => ({ ...prev, password: "" }));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = await signInWithPassword(formData.email, formData.password);
+      const { error } = await signIn(formData.email, formData.password);
       
       if (error) {
         toast({
@@ -206,56 +280,101 @@ const Auth = () => {
 
           {/* Admin Login Form */}
           {authType === "admin" && (
-            <form onSubmit={handleAdminLogin} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="admin@r-vault.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="pl-10 bg-secondary border-border focus:border-primary"
-                    required
-                  />
+            <div className="space-y-5">
+              <form onSubmit={handleAdminLogin} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="admin-email" className="text-sm font-medium">
+                    Email
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="admin-email"
+                      name="email"
+                      type="email"
+                      placeholder={ADMIN_EMAIL || "admin@yourdomain.com"}
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="pl-10 bg-secondary border-border focus:border-primary"
+                      required
+                      autoComplete="username"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="pl-10 bg-secondary border-border focus:border-primary"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="admin-password" className="text-sm font-medium">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="admin-password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="pl-10 bg-secondary border-border focus:border-primary"
+                      required
+                      autoComplete="current-password"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Signing in...
-                  </span>
-                ) : (
-                  "Sign in as Admin"
-                )}
-              </Button>
-            </form>
+                <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : (
+                    "Sign in as Admin"
+                  )}
+                </Button>
+              </form>
+
+              {ADMIN_EMAIL && ADMIN_SETUP_KEY && (
+                <div className="rounded-lg border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    className="mb-2 text-sm font-medium text-primary hover:underline"
+                    onClick={() => setShowAdminSetup((v) => !v)}
+                  >
+                    {showAdminSetup ? "Hide first-time setup" : "First-time admin: create password"}
+                  </button>
+                  {showAdminSetup && (
+                    <form onSubmit={handleAdminBootstrap} className="mt-3 space-y-3 text-foreground">
+                      <p className="text-muted-foreground">
+                        Use only once. After login works, remove{" "}
+                        <code className="rounded bg-muted px-1">VITE_ADMIN_SETUP_KEY</code> from env and
+                        redeploy.
+                      </p>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Setup key</Label>
+                        <Input
+                          type="password"
+                          value={adminSetupKey}
+                          onChange={(e) => setAdminSetupKey(e.target.value)}
+                          placeholder="From VITE_ADMIN_SETUP_KEY"
+                          className="bg-secondary"
+                          autoComplete="off"
+                        />
+                      </div>
+                      <Button type="submit" variant="secondary" className="w-full" disabled={isLoading}>
+                        Create admin account (sign up)
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              <p className="text-center text-xs text-muted-foreground">
+                Login uses the same Supabase account as normal users. If login fails: create the user in
+                Supabase → Authentication → Users (same email), or confirm email if confirmations are
+                enabled.
+              </p>
+            </div>
           )}
 
           {/* User Auth */}

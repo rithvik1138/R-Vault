@@ -15,9 +15,104 @@ import {
   Trash2,
   MessageSquare,
   Users,
-  Image,
-  Video,
+  FileText,
 } from "lucide-react";
+
+/** Preview DM media in admin panel (signed URL from chat-media bucket). */
+function AdminMessageMedia({
+  mediaUrl,
+  mediaType,
+  fileLabel,
+}: {
+  mediaUrl: string | null;
+  mediaType: string | null;
+  fileLabel: string | null;
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!mediaUrl) {
+      setSignedUrl(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void supabase.storage
+      .from("chat-media")
+      .createSignedUrl(mediaUrl, 60 * 60)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setSignedUrl(null);
+          return;
+        }
+        setSignedUrl(data?.signedUrl ?? null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaUrl]);
+
+  if (!mediaUrl || !mediaType) return null;
+
+  if (loading) {
+    return (
+      <div className="mt-2 h-40 max-w-sm rounded-lg bg-muted animate-pulse" aria-hidden />
+    );
+  }
+  if (!signedUrl) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">
+        Could not load media (check storage access).
+      </p>
+    );
+  }
+
+  if (mediaType === "image") {
+    return (
+      <a
+        href={signedUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-block max-w-full overflow-hidden rounded-lg border border-border"
+      >
+        <img
+          src={signedUrl}
+          alt={fileLabel || "Shared image"}
+          className="max-h-72 max-w-full object-contain bg-muted/30"
+        />
+      </a>
+    );
+  }
+
+  if (mediaType === "video") {
+    return (
+      <video
+        src={signedUrl}
+        controls
+        className="mt-2 max-h-72 max-w-full rounded-lg border border-border bg-black"
+      >
+        <track kind="captions" />
+      </video>
+    );
+  }
+
+  return (
+    <a
+      href={signedUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-2 inline-flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2 text-sm text-primary hover:bg-secondary"
+    >
+      <FileText className="h-4 w-4 shrink-0" />
+      <span className="truncate">{fileLabel || `${mediaType} file`}</span>
+    </a>
+  );
+}
 
 interface Message {
   id: string;
@@ -210,11 +305,6 @@ const AdminPanel = () => {
     return new Date(date).toLocaleString();
   };
 
-  const getMediaUrl = async (mediaPath: string) => {
-    const { data } = await supabase.storage.from("chat-media").createSignedUrl(mediaPath, 60 * 60);
-    return data?.signedUrl || null;
-  };
-
   if (loading || adminLoading) {
     return (
       <div className="h-screen bg-gradient-hero flex items-center justify-center">
@@ -329,17 +419,16 @@ const AdminPanel = () => {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground mb-1">{formatDate(msg.created_at)}</p>
-                          {msg.content && <p className="text-sm">{msg.content}</p>}
-                          {msg.media_type && (
-                            <div className="flex items-center gap-1 text-xs text-primary mt-1">
-                              {msg.media_type === "image" ? (
-                                <Image className="w-3 h-3" />
-                              ) : (
-                                <Video className="w-3 h-3" />
-                              )}
-                              {msg.media_type}
-                            </div>
+                          {msg.content && (
+                            <p className={msg.media_url ? "text-xs text-muted-foreground mb-1" : "text-sm"}>
+                              {msg.content}
+                            </p>
                           )}
+                          <AdminMessageMedia
+                            mediaUrl={msg.media_url}
+                            mediaType={msg.media_type}
+                            fileLabel={msg.content}
+                          />
                         </div>
                         <Button
                           variant="ghost"
@@ -389,17 +478,16 @@ const AdminPanel = () => {
                                 : selectedConversation.user2_name}{" "}
                               • {formatDate(msg.created_at)}
                             </p>
-                            {msg.content && <p className="text-sm">{msg.content}</p>}
-                            {msg.media_type && (
-                              <div className="flex items-center gap-1 text-xs text-primary mt-1">
-                                {msg.media_type === "image" ? (
-                                  <Image className="w-3 h-3" />
-                                ) : (
-                                  <Video className="w-3 h-3" />
-                                )}
-                                {msg.media_type}
-                              </div>
+                            {msg.content && (
+                              <p className={msg.media_url ? "text-xs text-muted-foreground mb-1" : "text-sm"}>
+                                {msg.content}
+                              </p>
                             )}
+                            <AdminMessageMedia
+                              mediaUrl={msg.media_url}
+                              mediaType={msg.media_type}
+                              fileLabel={msg.content}
+                            />
                           </div>
                           <Button
                             variant="ghost"

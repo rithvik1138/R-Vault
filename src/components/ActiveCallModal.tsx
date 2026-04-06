@@ -126,38 +126,57 @@ const ActiveCallModal = ({
 
           {/* Video area / Avatar area */}
           <div className="flex-1 relative bg-secondary flex items-center justify-center min-h-[300px]">
-            {isVideoCall && callState === "connected" && remoteStream ? (
-              <>
-                {/* Remote video: muted so it can autoplay on mobile (iOS blocks video with sound). Audio plays from the hidden <audio> below. */}
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                  onLoadedMetadata={() => {
-                    remoteVideoRef.current?.play().catch(() => {});
-                  }}
-                  onCanPlay={() => {
-                    remoteVideoRef.current?.play().catch(() => {});
-                  }}
-                />
-                {/* Local video preview */}
-                <div className="absolute bottom-4 right-4 w-32 h-24 rounded-lg overflow-hidden border-2 border-border shadow-lg">
+            {isVideoCall && callState === "connected" ? (
+              <div className="relative w-full min-h-[300px] flex-1 bg-black/90">
+                {!remoteStream && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <span className="text-sm">Connecting…</span>
+                  </div>
+                )}
+                {remoteStream &&
+                  !remoteStream
+                    .getVideoTracks()
+                    .some((t) => t.readyState === "live" && t.enabled) && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 text-muted-foreground bg-black/50">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span className="text-sm">Waiting for remote video…</span>
+                    </div>
+                  )}
+                {/* Remote video: muted for autoplay on mobile; audio from hidden <audio> */}
+                {remoteStream && (
                   <video
-                    ref={localVideoRef}
+                    ref={remoteVideoRef}
                     autoPlay
                     playsInline
                     muted
-                    className={`w-full h-full object-cover ${!isVideoEnabled ? "hidden" : ""}`}
+                    className="absolute inset-0 z-10 h-full w-full object-contain"
+                    onLoadedMetadata={() => {
+                      remoteVideoRef.current?.play().catch(() => {});
+                    }}
+                    onCanPlay={() => {
+                      remoteVideoRef.current?.play().catch(() => {});
+                    }}
                   />
-                  {!isVideoEnabled && (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <VideoOff className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </>
+                )}
+                {/* Local preview (your camera) */}
+                {localStream && (
+                  <div className="absolute bottom-4 right-4 z-30 w-32 h-24 rounded-lg overflow-hidden border-2 border-border shadow-lg">
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover ${!isVideoEnabled ? "hidden" : ""}`}
+                    />
+                    {!isVideoEnabled && (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <VideoOff className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="text-center">
                 {/* Avatar */}

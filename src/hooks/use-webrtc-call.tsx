@@ -30,6 +30,16 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    // Public TURN relay (helps when direct peer connection fails; improves video reliability)
+    {
+      urls: [
+        "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:443?transport=tcp",
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
   ],
 };
 
@@ -335,17 +345,7 @@ export const useWebRTCCall = () => {
       const pc = createPeerConnection(call.id);
       peerConnectionRef.current = pc;
 
-      // Ensure we negotiate receiving tracks reliably across browsers
-      if (isVideo) {
-        try {
-          pc.addTransceiver("video", { direction: "sendrecv" });
-        } catch {}
-      }
-      try {
-        pc.addTransceiver("audio", { direction: "sendrecv" });
-      } catch {}
-
-      // Add local tracks
+      // Add local tracks (do not mix with addTransceiver — duplicates m-lines and breaks video)
       stream.getTracks().forEach((track) => {
         console.log("Adding local track:", track.kind, track.enabled);
         pc.addTrack(track, stream);
@@ -414,16 +414,6 @@ export const useWebRTCCall = () => {
       // Create peer connection
       const pc = createPeerConnection(call.id);
       peerConnectionRef.current = pc;
-
-      // Ensure we negotiate receiving tracks reliably across browsers
-      if (call.call_type === "video") {
-        try {
-          pc.addTransceiver("video", { direction: "sendrecv" });
-        } catch {}
-      }
-      try {
-        pc.addTransceiver("audio", { direction: "sendrecv" });
-      } catch {}
 
       // Add local tracks BEFORE setting remote description
       stream.getTracks().forEach((track) => {
